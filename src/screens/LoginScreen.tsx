@@ -26,7 +26,7 @@ const LoginScreen = ({ navigation }: any) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Consultorio Médico</Text>
+      <Text style={styles.title}>MediTrack</Text>
       
       <TextInput 
         style={styles.input} 
