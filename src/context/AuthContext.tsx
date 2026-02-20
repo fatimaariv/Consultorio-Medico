@@ -1,0 +1,30 @@
+// src/context/AuthContext.tsx
+import React, { createContext, useEffect, useState } from 'react';
+import { Session } from '@supabase/supabase-js';
+import { supabase } from '../supabase/supabase';
+
+export const AuthContext = createContext<{ session: Session | null }>({ session: null });
+
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [session, setSession] = useState<Session | null>(null);
+
+  useEffect(() => {
+    // Revisa la sesión actual al abrir la app
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    // Escucha cambios (login/logout)
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => authListener.subscription.unsubscribe();
+  }, []);
+
+  return (
+    <AuthContext.Provider value={{ session }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
