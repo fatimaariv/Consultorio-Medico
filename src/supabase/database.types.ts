@@ -52,7 +52,7 @@ export type Database = {
         Insert: {
           estado: string
           fecha: string
-          id_cita?: number
+          id_cita?: never
           id_consultorio: number
           id_doctor: number
           id_paciente: number
@@ -61,7 +61,7 @@ export type Database = {
         Update: {
           estado?: string
           fecha?: string
-          id_cita?: number
+          id_cita?: never
           id_consultorio?: number
           id_doctor?: number
           id_paciente?: number
@@ -69,25 +69,25 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "citas_id_consultorio_fkey"
+            foreignKeyName: "fk_cita_consultorio"
             columns: ["id_consultorio"]
             isOneToOne: false
             referencedRelation: "consultorio"
             referencedColumns: ["id_consultorio"]
           },
           {
-            foreignKeyName: "citas_id_doctor_fkey"
+            foreignKeyName: "fk_cita_doctor"
             columns: ["id_doctor"]
             isOneToOne: false
             referencedRelation: "doctores"
-            referencedColumns: ["id_doctor"]
+            referencedColumns: ["id_usuario"]
           },
           {
-            foreignKeyName: "citas_id_paciente_fkey"
+            foreignKeyName: "fk_cita_paciente"
             columns: ["id_paciente"]
             isOneToOne: false
             referencedRelation: "pacientes"
-            referencedColumns: ["id_paciente"]
+            referencedColumns: ["id_usuario"]
           },
         ]
       }
@@ -112,7 +112,7 @@ export type Database = {
           estatura?: number | null
           fecha: string
           id_cita: number
-          id_consulta?: number
+          id_consulta?: never
           id_doctor: number
           id_paciente: number
           notas?: string | null
@@ -127,7 +127,7 @@ export type Database = {
           estatura?: number | null
           fecha?: string
           id_cita?: number
-          id_consulta?: number
+          id_consulta?: never
           id_doctor?: number
           id_paciente?: number
           notas?: string | null
@@ -139,25 +139,25 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "consultas_id_cita_fkey"
+            foreignKeyName: "fk_consulta_cita"
             columns: ["id_cita"]
             isOneToOne: false
             referencedRelation: "citas"
             referencedColumns: ["id_cita"]
           },
           {
-            foreignKeyName: "consultas_id_doctor_fkey"
+            foreignKeyName: "fk_consulta_doctor"
             columns: ["id_doctor"]
             isOneToOne: false
             referencedRelation: "doctores"
-            referencedColumns: ["id_doctor"]
+            referencedColumns: ["id_usuario"]
           },
           {
-            foreignKeyName: "consultas_id_paciente_fkey"
+            foreignKeyName: "fk_consulta_paciente"
             columns: ["id_paciente"]
             isOneToOne: false
             referencedRelation: "pacientes"
-            referencedColumns: ["id_paciente"]
+            referencedColumns: ["id_usuario"]
           },
         ]
       }
@@ -169,12 +169,12 @@ export type Database = {
         }
         Insert: {
           estado: string
-          id_consultorio?: number
+          id_consultorio?: never
           numero: number
         }
         Update: {
           estado?: string
-          id_consultorio?: number
+          id_consultorio?: never
           numero?: number
         }
         Relationships: []
@@ -185,7 +185,6 @@ export type Database = {
           especialidad: string
           horario_f: string
           horario_i: string
-          id_doctor: number
           id_usuario: number
         }
         Insert: {
@@ -193,7 +192,6 @@ export type Database = {
           especialidad: string
           horario_f: string
           horario_i: string
-          id_doctor?: number
           id_usuario: number
         }
         Update: {
@@ -201,14 +199,13 @@ export type Database = {
           especialidad?: string
           horario_f?: string
           horario_i?: string
-          id_doctor?: number
           id_usuario?: number
         }
         Relationships: [
           {
-            foreignKeyName: "doctores_id_usuario_fkey"
+            foreignKeyName: "fk_doctor_usuario"
             columns: ["id_usuario"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "usuario"
             referencedColumns: ["id_usuario"]
           },
@@ -217,7 +214,6 @@ export type Database = {
       pacientes: {
         Row: {
           enf_cronicas: string | null
-          id_paciente: number
           id_usuario: number
           nacimiento: string
           sexo: string
@@ -225,7 +221,6 @@ export type Database = {
         }
         Insert: {
           enf_cronicas?: string | null
-          id_paciente?: number
           id_usuario: number
           nacimiento: string
           sexo: string
@@ -233,7 +228,6 @@ export type Database = {
         }
         Update: {
           enf_cronicas?: string | null
-          id_paciente?: number
           id_usuario?: number
           nacimiento?: string
           sexo?: string
@@ -241,13 +235,28 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "pacientes_id_usuario_fkey"
+            foreignKeyName: "fk_paciente_usuario"
             columns: ["id_usuario"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "usuario"
             referencedColumns: ["id_usuario"]
           },
         ]
+      }
+      roles: {
+        Row: {
+          id_rol: number
+          nombre_rol: string
+        }
+        Insert: {
+          id_rol?: never
+          nombre_rol: string
+        }
+        Update: {
+          id_rol?: never
+          nombre_rol?: string
+        }
+        Relationships: []
       }
       usuario: {
         Row: {
@@ -255,29 +264,37 @@ export type Database = {
           apellido_p: string
           contrasena: string
           correo: string
+          id_rol: number
           id_usuario: number
           nombre: string
-          rol: string
         }
         Insert: {
           apellido_m: string
           apellido_p: string
           contrasena: string
           correo: string
-          id_usuario?: number
+          id_rol: number
+          id_usuario?: never
           nombre: string
-          rol: string
         }
         Update: {
           apellido_m?: string
           apellido_p?: string
           contrasena?: string
           correo?: string
-          id_usuario?: number
+          id_rol?: number
+          id_usuario?: never
           nombre?: string
-          rol?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_usuario_rol"
+            columns: ["id_rol"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id_rol"]
+          },
+        ]
       }
     }
     Views: {
