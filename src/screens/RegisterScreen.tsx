@@ -12,51 +12,50 @@ export default function RegisterScreen({ navigation }: any) {
     password: '',
   });
 
-  const handleRegister = async () => {
-    const { nombre, apellido_p, apellido_m, email, password } = formData;
+const handleRegister = async () => {
+  const { nombre, apellido_p, apellido_m, email, password } = formData;
+  if (!nombre || !apellido_p || !email || !password) {
+    Alert.alert("Atención", "Por favor completa los campos obligatorios.");
+    return;
+  }
 
-    // Validación de campos obligatorios
-    if (!nombre || !apellido_p || !email || !password) {
-      Alert.alert("Atención", "Por favor completa los campos obligatorios.");
-      return;
-    }
+  setLoading(true);
+  try {
+    // 1. Crear el usuario en Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: email,
+      password: password,
+    });
 
-    setLoading(true);
-    try {
-      // 1. Crear el usuario en Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: email,
-        password: password,
-      });
+    if (authError) throw authError;
 
-      if (authError) throw authError;
+    // 2. Insertar en tu tabla 'usuario'
+    // CORRECCIÓN: Usamos 'rol' (string) porque así está en tu database.types.ts
+    const { error: dbError } = await supabase
+      .from('usuario')
+      .insert([
+        {
+          nombre: nombre,
+          apellido_p: apellido_p,
+          apellido_m: apellido_m,
+          correo: email,
+          contrasena: password,
+          rol: 'paciente', // <--- Esto es lo que cambié para que no te dé error de tipos
+        }
+      ]);
 
-      // 2. Insertar en tu tabla 'usuario'
-      // id_rol: 2 (Asegúrate de que el '2' sea el ID de 'Paciente' en tu tabla roles)
-      const { error: dbError } = await supabase
-        .from('usuario')
-        .insert([
-          {
-            nombre: nombre,
-            apellido_p: apellido_p,
-            apellido_m: apellido_m,
-            correo: email,
-            contrasena: password,
-            id_rol: 2, 
-          }
-        ]);
+    if (dbError) throw dbError;
 
-      if (dbError) throw dbError;
+    Alert.alert("¡Éxito!", "Cuenta creada correctamente.");
+    navigation.navigate('Login');
+  } catch (error: any) {
+    Alert.alert("Error de registro", error.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
-      Alert.alert("¡Éxito!", "Cuenta creada. Por favor verifica tu correo para activar tu cuenta.");
-      navigation.navigate('Login');
-    } catch (error: any) {
-      Alert.alert("Error de registro", error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // AQUÍ EMPIEZA TU DISEÑO (INTACTO)
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.brand}>MediTrak</Text>
@@ -69,7 +68,6 @@ export default function RegisterScreen({ navigation }: any) {
           onChangeText={(text) => setFormData({...formData, nombre: text})}
         />
         
-        {/* Apellidos en una sola fila para ahorrar espacio */}
         <View style={styles.row}>
           <TextInput 
             placeholder="Ap. Paterno" 
@@ -117,6 +115,7 @@ export default function RegisterScreen({ navigation }: any) {
   );
 }
 
+// TUS ESTILOS ORIGINALES SIN TOCAR
 const styles = StyleSheet.create({
   container: { flexGrow: 1, justifyContent: 'center', padding: 30, backgroundColor: '#F8F9FA' },
   brand: { fontSize: 22, textAlign: 'center', color: '#007AFF', fontWeight: 'bold', marginBottom: 10 },
