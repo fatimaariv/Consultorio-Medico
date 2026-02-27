@@ -73,26 +73,31 @@ export default function VerifyCodeScreen({ route, navigation }: any) {
 
 // Estilos idénticos a tus otras pantallas para mantener la uniformidad
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 30, backgroundColor: '#F8F9FA' },
-  brand: { fontSize: 22, textAlign: 'center', color: '#007AFF', fontWeight: 'bold', marginBottom: 10 },
-  title: { fontSize: 28, fontWeight: 'bold', marginBottom: 10, textAlign: 'center', color: '#333' },
-  subtitle: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 30 },
-  inputGroup: { marginBottom: 20 },
-  input: { 
-    backgroundColor: '#fff', 
-    padding: 15, 
-    borderRadius: 12, 
-    marginBottom: 15, 
-    borderWidth: 1, 
-    borderColor: '#E1E1E1',
-    fontSize: 16
-  },
-  button: { 
-    backgroundColor: '#007AFF', 
-    padding: 18, 
-    borderRadius: 12, 
-    alignItems: 'center',
-    elevation: 2,
-  },
-  buttonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+    
+    container: { flex: 1, justifyContent: 'center', padding: 30, backgroundColor: '#F8F9FA' },
+    brand: { fontSize: 22, textAlign: 'center', color: '#007AFF', fontWeight: 'bold', marginBottom: 10 },
+    title: { fontSize: 28, fontWeight: 'bold', marginBottom: 10, textAlign: 'center', color: '#333' },
+    subtitle: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 30 },
+    inputGroup: { marginBottom: 20 },
+    
+    input: 
+    { 
+        backgroundColor: '#fff', 
+        padding: 15, 
+        borderRadius: 12, 
+        marginBottom: 15, 
+        borderWidth: 1, 
+        borderColor: '#E1E1E1',
+        fontSize: 16
+    },
+    button: 
+    { 
+        backgroundColor: '#007AFF', 
+        padding: 18, 
+        borderRadius: 12, 
+        alignItems: 'center',
+        elevation: 2,
+    },
+    
+    buttonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
 });

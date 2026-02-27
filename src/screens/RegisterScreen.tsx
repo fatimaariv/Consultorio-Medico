@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
 import { 
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
   View, 
   TextInput, 
   TouchableOpacity, 
@@ -60,8 +64,7 @@ export default function RegisterScreen({ navigation }: any) {
 
       if (dbError) throw dbError;
 
-      Alert.alert("¡Éxito!", "Cuenta creada. Por favor revisa tu correo para confirmar.");
-      navigation.navigate('Login');
+      Alert.alert("¡Bienvenido!", "Tu cuenta ha sido creada con éxito.");
     } catch (error: any) {
       Alert.alert("Error de registro", error.message);
     } finally {
@@ -69,7 +72,14 @@ export default function RegisterScreen({ navigation }: any) {
     }
   };
 
+  
+  
   return (
+    <KeyboardAvoidingView 
+    behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+    style={{ flex: 1 }}
+  >
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.brand}>MediTrak</Text>
       <Text style={styles.title}>Nueva Cuenta</Text>
@@ -167,6 +177,9 @@ export default function RegisterScreen({ navigation }: any) {
         <Text style={styles.link}>¿Ya tienes cuenta? Inicia sesión</Text>
       </TouchableOpacity>
     </ScrollView>
+  
+  </TouchableWithoutFeedback>
+  </KeyboardAvoidingView>
   );
 }
 

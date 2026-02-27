@@ -17,7 +17,7 @@ export const login = async (email: string, pass: string) => {
   // 2. Si la contraseña es correcta, buscamos los datos adicionales 
   // (nombre, apellido, rol) en tu tabla 'usuario' usando el correo.
   const { data, error } = await supabase
-    .from('usuario')
+    .from('usuarios')
     .select('*')
     .eq('correo', email)
     .single();
