@@ -6,37 +6,36 @@ export default function ForgotPasswordScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleResetPassword = async () => {
-    if (!email) {
-      Alert.alert("Atención", "Por favor ingresa tu correo electrónico.");
-      return;
-    }
+// ForgotPasswordScreen.tsx
+const handleResetPassword = async () => {
+  if (!email) {
+    Alert.alert("Atención", "Ingresa tu correo.");
+    return;
+  }
 
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://tu-app-url.com/reset-password', // Opcional: URL de tu web o deep link
-      });
+  setLoading(true);
+  try {
+    // Esto dispara el envío del código {{ .Token }} que configuraste arriba
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
 
-      if (error) throw error;
+    if (error) throw error;
 
-      Alert.alert(
-        "Correo enviado", 
-        "Si el correo existe en nuestro sistema, recibirás un enlace para restablecer tu contraseña."
-      );
-      navigation.goBack(); // Regresa al Login
-    } catch (error: any) {
-      Alert.alert("Error", error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    Alert.alert("Código enviado", "Revisa tu bandeja de entrada.");
+    // Pasamos el email a la siguiente pantalla para la verificación
+    navigation.navigate('VerifyCode', { email: email });
+
+  } catch (error: any) {
+    Alert.alert("Error", error.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <View style={styles.container}>
       <Text style={styles.brand}>MediTrak</Text>
       <Text style={styles.title}>Recuperar Acceso</Text>
-      <Text style={styles.subtitle}>Te enviaremos un correo con las instrucciones.</Text>
+      <Text style={styles.subtitle}>Te enviaremos un código de 6 dígitos a tu correo.</Text>
       
       <View style={styles.inputGroup}>
         <TextInput 
@@ -45,11 +44,12 @@ export default function ForgotPasswordScreen({ navigation }: any) {
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
+          value={email}
         />
       </View>
 
       <TouchableOpacity style={styles.button} onPress={handleResetPassword} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Enviar enlace</Text>}
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Enviar código</Text>}
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.footer}>
@@ -59,6 +59,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
   );
 }
 
+// ESTILOS INTACTOS
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', padding: 30, backgroundColor: '#F8F9FA' },
   brand: { fontSize: 22, textAlign: 'center', color: '#007AFF', fontWeight: 'bold', marginBottom: 10 },

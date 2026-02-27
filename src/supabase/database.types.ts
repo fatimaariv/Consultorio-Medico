@@ -43,8 +43,10 @@ export type Database = {
         Row: {
           estado: string
           fecha: string
-          id_cita: number
-          id_consultorio: number
+          fecha_creacion: string
+          hora: string
+          id: number
+          id_consultorio: number | null
           id_doctor: number
           id_paciente: number
           motivo: string
@@ -52,8 +54,10 @@ export type Database = {
         Insert: {
           estado: string
           fecha: string
-          id_cita?: number
-          id_consultorio: number
+          fecha_creacion?: string
+          hora: string
+          id?: never
+          id_consultorio?: number | null
           id_doctor: number
           id_paciente: number
           motivo: string
@@ -61,8 +65,10 @@ export type Database = {
         Update: {
           estado?: string
           fecha?: string
-          id_cita?: number
-          id_consultorio?: number
+          fecha_creacion?: string
+          hora?: string
+          id?: never
+          id_consultorio?: number | null
           id_doctor?: number
           id_paciente?: number
           motivo?: string
@@ -72,69 +78,69 @@ export type Database = {
             foreignKeyName: "citas_id_consultorio_fkey"
             columns: ["id_consultorio"]
             isOneToOne: false
-            referencedRelation: "consultorio"
-            referencedColumns: ["id_consultorio"]
+            referencedRelation: "consultorios"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "citas_id_doctor_fkey"
             columns: ["id_doctor"]
             isOneToOne: false
             referencedRelation: "doctores"
-            referencedColumns: ["id_doctor"]
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "citas_id_paciente_fkey"
             columns: ["id_paciente"]
             isOneToOne: false
             referencedRelation: "pacientes"
-            referencedColumns: ["id_paciente"]
+            referencedColumns: ["id"]
           },
         ]
       }
       consultas: {
         Row: {
           diagnostico: string
-          estatura: number | null
+          estatura: number
           fecha: string
+          id: number
           id_cita: number
-          id_consulta: number
           id_doctor: number
           id_paciente: number
           notas: string | null
-          peso: number | null
-          presion: string | null
+          peso: number
+          presion: string
           sintomas: string
-          temperatura: number | null
+          temperatura: number
           tratamiento: string
         }
         Insert: {
           diagnostico: string
-          estatura?: number | null
+          estatura: number
           fecha: string
+          id?: never
           id_cita: number
-          id_consulta?: number
           id_doctor: number
           id_paciente: number
           notas?: string | null
-          peso?: number | null
-          presion?: string | null
+          peso: number
+          presion: string
           sintomas: string
-          temperatura?: number | null
+          temperatura: number
           tratamiento: string
         }
         Update: {
           diagnostico?: string
-          estatura?: number | null
+          estatura?: number
           fecha?: string
+          id?: never
           id_cita?: number
-          id_consulta?: number
           id_doctor?: number
           id_paciente?: number
           notas?: string | null
-          peso?: number | null
-          presion?: string | null
+          peso?: number
+          presion?: string
           sintomas?: string
-          temperatura?: number | null
+          temperatura?: number
           tratamiento?: string
         }
         Relationships: [
@@ -143,39 +149,39 @@ export type Database = {
             columns: ["id_cita"]
             isOneToOne: false
             referencedRelation: "citas"
-            referencedColumns: ["id_cita"]
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "consultas_id_doctor_fkey"
             columns: ["id_doctor"]
             isOneToOne: false
             referencedRelation: "doctores"
-            referencedColumns: ["id_doctor"]
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "consultas_id_paciente_fkey"
             columns: ["id_paciente"]
             isOneToOne: false
             referencedRelation: "pacientes"
-            referencedColumns: ["id_paciente"]
+            referencedColumns: ["id"]
           },
         ]
       }
-      consultorio: {
+      consultorios: {
         Row: {
           estado: string
-          id_consultorio: number
-          numero: number
+          id: number
+          numero: string
         }
         Insert: {
           estado: string
-          id_consultorio?: number
-          numero: number
+          id?: never
+          numero: string
         }
         Update: {
           estado?: string
-          id_consultorio?: number
-          numero?: number
+          id?: never
+          numero?: string
         }
         Relationships: []
       }
@@ -183,101 +189,121 @@ export type Database = {
         Row: {
           cedula: string
           especialidad: string
-          horario_f: string
-          horario_i: string
-          id_doctor: number
-          id_usuario: number
+          hora_fin: string
+          hora_inicio: string
+          id: number
         }
         Insert: {
           cedula: string
           especialidad: string
-          horario_f: string
-          horario_i: string
-          id_doctor?: number
-          id_usuario: number
+          hora_fin: string
+          hora_inicio: string
+          id: number
         }
         Update: {
           cedula?: string
           especialidad?: string
-          horario_f?: string
-          horario_i?: string
-          id_doctor?: number
-          id_usuario?: number
+          hora_fin?: string
+          hora_inicio?: string
+          id?: number
         }
         Relationships: [
           {
-            foreignKeyName: "doctores_id_usuario_fkey"
-            columns: ["id_usuario"]
-            isOneToOne: false
-            referencedRelation: "usuario"
-            referencedColumns: ["id_usuario"]
+            foreignKeyName: "doctores_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
           },
         ]
       }
       pacientes: {
         Row: {
-          enf_cronicas: string | null
-          id_paciente: number
-          id_usuario: number
-          nacimiento: string
-          sexo: string
+          enfermedades: string
+          fecha_nacimiento: string
+          id: number
+        }
+        Insert: {
+          enfermedades: string
+          fecha_nacimiento: string
+          id: number
+        }
+        Update: {
+          enfermedades?: string
+          fecha_nacimiento?: string
+          id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pacientes_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roles: {
+        Row: {
+          descripcion: string | null
+          id: number
+          nombre: string
+        }
+        Insert: {
+          descripcion?: string | null
+          id?: never
+          nombre: string
+        }
+        Update: {
+          descripcion?: string | null
+          id?: never
+          nombre?: string
+        }
+        Relationships: []
+      }
+      usuarios: {
+        Row: {
+          apellido1: string
+          apellido2: string | null
+          contrasena: string
+          correo: string
+          genero: string
+          id: number
+          id_rol: number
+          nombre: string
           telefono: string | null
         }
         Insert: {
-          enf_cronicas?: string | null
-          id_paciente?: number
-          id_usuario: number
-          nacimiento: string
-          sexo: string
+          apellido1: string
+          apellido2?: string | null
+          contrasena: string
+          correo: string
+          genero: string
+          id?: never
+          id_rol: number
+          nombre: string
           telefono?: string | null
         }
         Update: {
-          enf_cronicas?: string | null
-          id_paciente?: number
-          id_usuario?: number
-          nacimiento?: string
-          sexo?: string
+          apellido1?: string
+          apellido2?: string | null
+          contrasena?: string
+          correo?: string
+          genero?: string
+          id?: never
+          id_rol?: number
+          nombre?: string
           telefono?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "pacientes_id_usuario_fkey"
-            columns: ["id_usuario"]
+            foreignKeyName: "usuarios_id_rol_fkey"
+            columns: ["id_rol"]
             isOneToOne: false
-            referencedRelation: "usuario"
-            referencedColumns: ["id_usuario"]
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
           },
         ]
-      }
-      usuario: {
-        Row: {
-          apellido_m: string
-          apellido_p: string
-          contrasena: string
-          correo: string
-          id_usuario: number
-          nombre: string
-          rol: string
-        }
-        Insert: {
-          apellido_m: string
-          apellido_p: string
-          contrasena: string
-          correo: string
-          id_usuario?: number
-          nombre: string
-          rol: string
-        }
-        Update: {
-          apellido_m?: string
-          apellido_p?: string
-          contrasena?: string
-          correo?: string
-          id_usuario?: number
-          nombre?: string
-          rol?: string
-        }
-        Relationships: []
       }
     }
     Views: {
