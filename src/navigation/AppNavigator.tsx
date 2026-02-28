@@ -8,24 +8,28 @@ import HomeScreen from '../screens/HomeScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen'; 
-import VerifyCodeScreen from '../screens/VerifyCodeScreen'; // <--- 1. IMPORTA LA PANTALLA DE VERIFICACIÓN
+import VerifyCodeScreen from '../screens/VerifyCodeScreen';
+import ScheduleScreen from '../screens/ScheduleScreen'; // <--- 1. IMPORTA LA NUEVA PANTALLA
 
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
-  const { session } = useContext(AuthContext);
+  const { session } = useContext(AuthContext); //
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {session ? (
-        <Stack.Screen name="Home" component={HomeScreen} />
+        /* Pantallas visibles SOLO cuando el usuario está logueado */
+        <>
+          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="Schedule" component={ScheduleScreen} /> 
+        </>
       ) : (
+        /* Pantallas de Autenticación */
         <>
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Register" component={RegisterScreen} />
           <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-          
-          {/* 2. AÑÁDELA AQUÍ PARA QUE SEA ACCESIBLE */}
           <Stack.Screen name="VerifyCode" component={VerifyCodeScreen} /> 
         </>
       )}
