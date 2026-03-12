@@ -12,6 +12,7 @@ import RegisterScreen from '../screens/RegisterScreen';
 import AdmiHome from '../screens/AdmiHome'; 
 import DoctorHome from '../screens/DoctorHome'; 
 import PatientProfile from '../screens/PatientProfile';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 
 
 const Stack = createNativeStackNavigator();
@@ -48,6 +49,7 @@ return (
       <>
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       </>
     )}
   </Stack.Navigator>
