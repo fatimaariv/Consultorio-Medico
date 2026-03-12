@@ -96,15 +96,23 @@ export default function HomeScreen({ navigation }: any) {
 
       </ScrollView>
 
-      {/* NAVBAR INFERIOR (Simulado) */}
+      {/* NAVBAR INFERIOR */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity><Text style={styles.navText}>Inicio</Text></TouchableOpacity>
-        <TouchableOpacity><Text style={styles.navText}>Citas</Text></TouchableOpacity>
-        <TouchableOpacity><Text style={styles.navText}>Perfil</Text></TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('Home')}>
+          <Text style={styles.navText}>Inicio</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity onPress={() => navigation.navigate('Schedule')}>
+          <Text style={styles.navText}>Citas</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity onPress={() => navigation.navigate('PatientProfile')}>
+          <Text style={styles.navText}>Perfil</Text>
+        </TouchableOpacity>
       </View>
-    </SafeAreaView>
-  );
-}
+    </SafeAreaView> // ✅ Cierre limpio aquí
+  ); // ✅ Cierre del return
+} // ✅ Cierre de la función HomeScreen
 
 const styles = StyleSheet.create({
   container: {

@@ -11,16 +11,16 @@ export const login = async (email: string, pass: string) => {
 
   // Si hay error aquí, es porque la contraseña está mal o el correo no existe en Auth
   if (authError) {
-    throw new Error("Correo o contraseña incorrectos.");
-  }
+  throw new Error(authError.message); // Esto te dirá si es "Invalid credentials" o "Email not confirmed"
+}
 
   // 2. Si la contraseña es correcta, buscamos los datos adicionales 
   // (nombre, apellido, rol) en tu tabla 'usuario' usando el correo.
   const { data, error } = await supabase
-    .from('usuarios')
-    .select('*')
-    .eq('correo', email)
-    .single();
+  .from('usuarios')
+  .select('*')
+  .eq('correo', email)
+  .single(); //
 
   // Si no encuentra el registro en la tabla 'usuario'
   if (error || !data) {
