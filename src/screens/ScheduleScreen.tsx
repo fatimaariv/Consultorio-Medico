@@ -1,136 +1,217 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TextInput, 
-  TouchableOpacity, 
-  Alert, 
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform
+  View, Text, StyleSheet, TextInput, TouchableOpacity, 
+  Alert, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator 
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker'; //
+import { Picker } from '@react-native-picker/picker';
+import { supabase } from '../supabase/supabase'; 
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function ScheduleScreen({ navigation }: any) {
+  const [loading, setLoading] = useState(true);
+  const [doctoresDB, setDoctoresDB] = useState<any[]>([]);
   const [formData, setFormData] = useState({
-    doctor: '',
+    id_doctor: '',
     especialidad: '',
     fecha: '',
     hora: '',
     motivo: ''
   });
 
-  // Tu diccionario de doctores conocidos
-  const especialistas = [
-    { nombre: "Dr. García", especialidad: "Cardiología" },
-    { nombre: "Dra. Rodríguez", especialidad: "Pediatría" },
-    { nombre: "Dr. López", especialidad: "Medicina General" }
-  ];
+  // 2. AGREGA ESTOS NUEVOS ESTADOS (Para el calendario)
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [date, setDate] = useState(new Date());
 
-  // Lógica de autocompletado adaptada a móvil
-  const handleDoctorChange = (val: string) => {
-    const coincidencia = especialistas.find(esp => esp.nombre === val);
-    
-    setFormData({
-      ...formData,
-      doctor: val,
-      // Si el nombre coincide, ponemos la especialidad automática
-      especialidad: coincidencia ? coincidencia.especialidad : formData.especialidad
-    });
+  // 3. AGREGA ESTAS FUNCIONES (Para manejar el cambio de fecha/hora)
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setDate(selectedDate);
+      const formattedDate = selectedDate.toISOString().split('T')[0];
+      setFormData({ ...formData, fecha: formattedDate });
+    }
   };
 
-  const handleSubmit = () => {
-    if (!formData.doctor || !formData.fecha || !formData.hora) {
-      Alert.alert("Error", "Por favor completa los campos obligatorios");
+  const onTimeChange = (event: any, selectedTime?: Date) => {
+    setShowTimePicker(false);
+    if (selectedTime) {
+      const hours = selectedTime.getHours().toString().padStart(2, '0');
+      const minutes = selectedTime.getMinutes().toString().padStart(2, '0');
+      setFormData({ ...formData, hora: `${hours}:${minutes}` });
+    }
+  };
+
+  useEffect(() => {
+    fetchDoctores();
+  }, []);
+
+  const fetchDoctores = async () => {
+    try {
+      setLoading(true);
+      
+      // 1. Traemos los doctores
+      const { data: dData, error: dError } = await supabase.from('doctores').select('*');
+      
+      // 2. Traemos TODO de usuarios para no fallar con el nombre de la columna
+      const { data: uData, error: uError } = await supabase.from('usuarios').select('*');
+
+      if (dError || uError) throw (dError || uError);
+
+      const formateados = (dData || []).map((doc: any) => {
+        // Buscamos al usuario. 
+        // IMPORTANTE: Si en tu tabla usuarios NO se llama 'cedula', 
+        // cambia 'u.cedula' por el nombre correcto (ej: u.id_usuario o u.dni)
+        const usuario = (uData || []).find(
+          (u: any) => String(u.cedula || u.id).trim() === String(doc.cedula).trim()
+        );
+
+        return {
+          id: doc.id.toString(),
+          nombre: usuario ? `${usuario.nombre} ${usuario.apellido1}` : `Dr. Cédula: ${doc.cedula}`,
+          especialidad: doc.especialidad // Se saca de la tabla doctores
+        };
+      });
+
+      setDoctoresDB(formateados);
+    } catch (error: any) {
+      console.error("Error detallado:", error.message);
+      Alert.alert("Error", "No se pudieron conectar las tablas. Revisa los nombres de las columnas.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateAppointment = async () => {
+    if (!formData.id_doctor || !formData.fecha || !formData.hora || !formData.motivo) {
+      Alert.alert("Error", "Por favor completa todos los campos");
       return;
     }
-    
-    console.log('Datos enviados:', formData);
-    Alert.alert(
-      "Cita Agendada", 
-      `Cita agendada con ${formData.doctor} (${formData.especialidad})`,
-      [{ text: "OK", onPress: () => navigation.goBack() }]
-    );
+    try {
+      const { error } = await supabase.from('citas').insert([{
+        id_doctor: parseInt(formData.id_doctor),
+        especialidad: formData.especialidad,
+        fecha: formData.fecha,
+        hora: formData.hora,
+        motivo: formData.motivo,
+        estado: 'pendiente',
+        id_paciente: 1 
+      }]);
+      if (error) throw error;
+      Alert.alert("Éxito", "Cita programada correctamente");
+      navigation.goBack();
+    } catch (error: any) {
+      Alert.alert("Error", "No se pudo crear la cita");
+    }
   };
 
+  if (loading) return (
+    <View style={styles.center}>
+      <ActivityIndicator size="large" color="#2563eb" />
+      <Text style={{marginTop: 10}}>Cargando médicos...</Text>
+    </View>
+  );
+
+  
+
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1 }}
-    >
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.card}>
-          <Text style={styles.title}>Agendar Nueva Cita</Text>
+          <Text style={styles.title}>Programar Cita</Text>
 
-          {/* Nombre del Doctor con Selector (Equivalente a Datalist) */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Nombre del Doctor</Text>
+            <Text style={styles.label}>Médico Disponible</Text>
             <View style={styles.pickerWrapper}>
               <Picker
-                selectedValue={formData.doctor}
-                onValueChange={(itemValue) => handleDoctorChange(itemValue)}
+                selectedValue={formData.id_doctor}
+                onValueChange={(val) => {
+                  const doc = doctoresDB.find(d => d.id === val);
+                  setFormData({
+                    ...formData, 
+                    id_doctor: val, 
+                    especialidad: doc ? doc.especialidad : '' 
+                  });
+                }}
               >
-                <Picker.Item label="Selecciona un doctor..." value="" />
-                {especialistas.map((esp, index) => (
-                  <Picker.Item key={index} label={esp.nombre} value={esp.nombre} />
+                <Picker.Item label="Seleccione un médico..." value="" />
+                {doctoresDB.map((doc) => (
+                  <Picker.Item key={doc.id} label={`Doc. ${doc.nombre}`} value={doc.id} />
                 ))}
               </Picker>
             </View>
           </View>
 
-          {/* Especialidad (Manual o Autocompletada) */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Especialidad</Text>
             <TextInput 
-              style={styles.input}
-              placeholder="Especialidad médica"
-              value={formData.especialidad}
-              onChangeText={(text) => setFormData({...formData, especialidad: text})}
+              style={[styles.input, styles.disabledInput]} 
+              value={formData.especialidad} 
+              editable={false} 
+              placeholder="Se llenará automáticamente"
             />
           </View>
 
-          {/* Fecha y Hora en la misma fila (Equivalente a grid-cols-2) */}
           <View style={styles.row}>
-            <View style={styles.halfField}>
-              <Text style={styles.label}>Fecha</Text>
-              <TextInput 
-                style={styles.input}
-                placeholder="AAAA-MM-DD"
-                value={formData.fecha}
-                onChangeText={(text) => setFormData({...formData, fecha: text})}
-              />
-            </View>
-            <View style={styles.halfField}>
-              <Text style={styles.label}>Hora</Text>
-              <TextInput 
-                style={styles.input}
-                placeholder="HH:MM"
-                value={formData.hora}
-                onChangeText={(text) => setFormData({...formData, hora: text})}
-              />
-            </View>
-          </View>
+  <View style={styles.halfField}>
+    <Text style={styles.label}>Fecha</Text>
+    <TouchableOpacity 
+      style={styles.input} 
+      onPress={() => setShowDatePicker(true)}
+    >
+      <Text>{formData.fecha || "Seleccionar Fecha"}</Text>
+    </TouchableOpacity>
+  </View>
 
-          {/* Motivo (Equivalente a Textarea) */}
+  <View style={styles.halfField}>
+    <Text style={styles.label}>Hora</Text>
+    <TouchableOpacity 
+      style={styles.input} 
+      onPress={() => setShowTimePicker(true)}
+    >
+      <Text>{formData.hora || "Seleccionar Hora"}</Text>
+    </TouchableOpacity>
+  </View>
+</View>
+
+{/* Componentes del Selector (solo se ven al presionar) */}
+{showDatePicker && (
+  <DateTimePicker
+    value={date}
+    mode="date"
+    display="default"
+    onChange={onDateChange}
+    minimumDate={new Date()} // No permite citas en el pasado
+  />
+)}
+
+{showTimePicker && (
+  <DateTimePicker
+    value={date}
+    mode="time"
+    display="default"
+    is24Hour={true}
+    onChange={onTimeChange}
+  />
+)}
+
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Motivo</Text>
+            <Text style={styles.label}>Motivo de la consulta</Text>
             <TextInput 
-              style={[styles.input, styles.textArea]}
-              placeholder="Ej: Revisión general"
-              multiline
-              numberOfLines={3}
-              value={formData.motivo}
-              onChangeText={(text) => setFormData({...formData, motivo: text})}
+                style={[styles.input, styles.textArea]} 
+                multiline 
+                placeholder="Describa brevemente..." 
+                value={formData.motivo} 
+                onChangeText={(t) => setFormData({...formData, motivo: t})} 
             />
           </View>
 
-          <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
+          <TouchableOpacity style={styles.submitBtn} onPress={handleCreateAppointment}>
             <Text style={styles.submitBtnText}>Confirmar Cita</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()}>
-            <Text style={styles.cancelBtnText}>Cancelar</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={styles.cancelBtnText}>Volver</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -139,18 +220,19 @@ export default function ScheduleScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   container: { flexGrow: 1, backgroundColor: '#f9fafb', justifyContent: 'center', padding: 16 },
   card: { backgroundColor: 'white', padding: 32, borderRadius: 8, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10 },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 24, textAlign: 'center', color: '#1f2937' },
   fieldGroup: { marginBottom: 16 },
   label: { fontSize: 14, fontWeight: '500', color: '#374151', marginBottom: 4 },
   input: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 6, padding: 8, fontSize: 16, backgroundColor: 'white' },
+  disabledInput: { backgroundColor: '#f3f4f6', color: '#4b5563', fontWeight: 'bold' },
   pickerWrapper: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 6, backgroundColor: 'white' },
   row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
   halfField: { width: '48%' },
   textArea: { height: 80, textAlignVertical: 'top' },
-  submitBtn: { backgroundColor: '#2563eb', padding: 10, borderRadius: 6, alignItems: 'center', marginTop: 10 },
-  submitBtnText: { color: 'white', fontWeight: '600', fontSize: 16 },
-  cancelBtn: { marginTop: 15, alignItems: 'center' },
-  cancelBtnText: { color: '#6b7280' }
+  submitBtn: { backgroundColor: '#2563eb', padding: 16, borderRadius: 6, alignItems: 'center', marginTop: 8 },
+  submitBtnText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+  cancelBtnText: { color: '#ef4444', textAlign: 'center', marginTop: 16, fontWeight: '600' }
 });

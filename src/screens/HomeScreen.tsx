@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, useEffect } from 'react'; // 1. Agregamos useState y useEffect
 import {
   View,
   Text,
@@ -21,6 +21,32 @@ interface Appointment {
 export default function HomeScreen({ navigation }: any) {
   const { session } = useContext(AuthContext);
 
+  // --- 2. LOGICA PARA OBTENER EL NOMBRE REAL ---
+  const [userName, setUserName] = useState('Usuario');
+
+  useEffect(() => {
+    const fetchRealName = async () => {
+      if (session?.user?.email) {
+        try {
+          const { data, error } = await supabase
+            .from('usuarios') // Consulta a tu tabla usuarios
+            .select('nombre')
+            .eq('correo', session.user.email)
+            .single();
+
+          if (data && !error) {
+            setUserName(data.nombre); // Guardamos el nombre real
+          }
+        } catch (error) {
+          console.log("Error al obtener nombre:", error);
+        }
+      }
+    };
+
+    fetchRealName();
+  }, [session]);
+  // ----------------------------------------------
+
   const appointments: Appointment[] = [
     { id: 1, doctor: "Dr. Ramírez", time: "10:30 AM", type: "Consulta General" },
     { id: 2, doctor: "Dra. López", time: "1:00 PM", type: "Resultados" },
@@ -39,12 +65,14 @@ export default function HomeScreen({ navigation }: any) {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
 
-        {/* HEADER */}
+        {/* HEADER MODIFICADO */}
         <View style={styles.header}>
           <Text style={styles.logo}>Meditrack</Text>
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={styles.greeting}>Buenos días,</Text>
-            <Text style={styles.userName}>{session?.user?.email?.split('@')[0] || 'Usuario'}</Text>
+            {/* 3. AQUI USAMOS EL NOMBRE REAL */}
+            <Text style={styles.userName}>{userName}</Text>
+            
             <TouchableOpacity style={styles.logout} onPress={handleLogout}>
               <Text style={styles.logoutText}>Cerrar sesión</Text>
             </TouchableOpacity>
@@ -70,20 +98,13 @@ export default function HomeScreen({ navigation }: any) {
         <View style={styles.actions}>
           <TouchableOpacity
             style={styles.primaryBtn}
-            onPress={() => navigation.navigate('Schedule')} // <--- ESTA ES LA CONEXIÓN
+            onPress={() => navigation.navigate('Schedule')}
           >
             <Text style={styles.primaryBtnText}>+ Agendar Cita</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.secondaryBtn}
-            onPress={() => {
-              console.log("Navegando a History con ID:", session?.user?.id);
-              try {
-                navigation.navigate('History', { patientId: session?.user?.id });
-              } catch (e) {
-                console.log("Error de navegación:", e);
-              }
-            }}
+            onPress={() => navigation.navigate('History', { patientId: session?.user?.id })}
           >
             <Text style={styles.secondaryBtnText}>Ver Historial</Text>
           </TouchableOpacity>
@@ -120,9 +141,9 @@ export default function HomeScreen({ navigation }: any) {
           <Text style={styles.navText}>Perfil</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView> // ✅ Cierre limpio aquí
-  ); // ✅ Cierre del return
-} // ✅ Cierre de la función HomeScreen
+    </SafeAreaView>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
