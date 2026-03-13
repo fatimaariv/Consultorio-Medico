@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useCallback } from 'react'; // 1. Cambiamos useEffect por useCallback
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import { supabase } from '../supabase/supabase';
+import { useFocusEffect } from '@react-navigation/native'; // 2. Importamos useFocusEffect
 
 export default function HomeScreen({ navigation }: any) {
   const { session } = useContext(AuthContext);
@@ -17,69 +18,72 @@ export default function HomeScreen({ navigation }: any) {
   const [totalCitas, setTotalCitas] = useState(0);
   const [citasReales, setCitasReales] = useState<any[]>([]);
 
-  useEffect(() => {
-    const fetchUserDataAndCitas = async () => {
-      if (session?.user?.email) {
-        try {
-          // 1. Obtenemos datos del usuario logueado
-          const { data: userData, error: userError } = await supabase
-            .from('usuarios')
-            .select('id, nombre')
-            .eq('correo', session.user.email)
-            .single();
+  // 3. Sacamos la función de carga para poder usarla dentro del useFocusEffect
+  const fetchUserDataAndCitas = async () => {
+    if (session?.user?.email) {
+      try {
+        // 1. Obtenemos datos del usuario logueado
+        const { data: userData, error: userError } = await supabase
+          .from('usuarios')
+          .select('id, nombre')
+          .eq('correo', session.user.email)
+          .single();
 
-          if (userData && !userError) {
-            setUserName(userData.nombre);
+        if (userData && !userError) {
+          setUserName(userData.nombre);
 
-            // 2. Contador total de citas (Histórico)
-            const { count } = await supabase
-              .from('citas')
-              .select('*', { count: 'exact', head: true })
-              .eq('id_paciente', userData.id);
-            setTotalCitas(count || 0);
+          // 2. Contador total de citas (Histórico)
+          const { count } = await supabase
+            .from('citas')
+            .select('*', { count: 'exact', head: true })
+            .eq('id_paciente', userData.id);
+          setTotalCitas(count || 0);
 
-            // 3. OBTENER SOLO CITAS PRÓXIMAS (Fecha >= Hoy)
-            const hoy = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
+          // 3. OBTENER SOLO CITAS PRÓXIMAS (Fecha >= Hoy)
+          const hoy = new Date().toISOString().split('T')[0];
 
-            const { data: citasData, error: citasError } = await supabase
-              .from('citas')
-              .select(`
-                id,
-                fecha,
-                hora,
-                doctores (
-                  usuarios (
-                    nombre,
-                    apellido1
-                  )
+          const { data: citasData, error: citasError } = await supabase
+            .from('citas')
+            .select(`
+              id,
+              fecha,
+              hora,
+              doctores (
+                usuarios (
+                  nombre,
+                  apellido1
                 )
-              `)
-              .eq('id_paciente', userData.id)
-              .gte('fecha', hoy) // <--- FILTRO: Solo de hoy en adelante
-              .order('fecha', { ascending: true })
-              .order('hora', { ascending: true });
+              )
+            `)
+            .eq('id_paciente', userData.id)
+            .gte('fecha', hoy)
+            .order('fecha', { ascending: true })
+            .order('hora', { ascending: true });
 
-            if (!citasError && citasData) {
-              const formateadas = citasData.map((c: any) => ({
-                id: c.id,
-                fecha: c.fecha,
-                hora: c.hora,
-                // Si la relación está bien hecha, sacamos el nombre del doctor
-                nombreDoctor: c.doctores?.usuarios 
-                  ? `Dr. ${c.doctores.usuarios.nombre} ${c.doctores.usuarios.apellido1}`
-                  : "Doctor no asignado"
-              }));
-              setCitasReales(formateadas);
-            }
+          if (!citasError && citasData) {
+            const formateadas = citasData.map((c: any) => ({
+              id: c.id,
+              fecha: c.fecha,
+              hora: c.hora,
+              nombreDoctor: c.doctores?.usuarios 
+                ? `Dr. ${c.doctores.usuarios.nombre} ${c.doctores.usuarios.apellido1}`
+                : "Doctor no asignado"
+            }));
+            setCitasReales(formateadas);
           }
-        } catch (error) {
-          console.log("Error:", error);
         }
+      } catch (error) {
+        console.log("Error:", error);
       }
-    };
+    }
+  };
 
-    fetchUserDataAndCitas();
-  }, [session]);
+  // 4. CLAVE: useFocusEffect recarga los datos cada vez que la pantalla "se enfoca"
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserDataAndCitas();
+    }, [session])
+  );
 
   const handleLogout = async () => {
     try {
