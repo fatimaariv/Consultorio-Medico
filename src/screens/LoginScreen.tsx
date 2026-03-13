@@ -25,7 +25,7 @@ export default function LoginScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.brand}>Medi Tracßk</Text>
+      <Text style={styles.brand}>Medi Track</Text>
       <Text style={styles.title}>Iniciar Sesión</Text>
       
       <View style={styles.inputGroup}>
