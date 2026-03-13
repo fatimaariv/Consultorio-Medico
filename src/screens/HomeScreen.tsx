@@ -20,14 +20,13 @@ interface Appointment {
 
 export default function HomeScreen({ navigation }: any) {
   const { session } = useContext(AuthContext);
-  const [userName, setUserName] = useState('Usuario');
+  const [userName, setUserName] = useState('usuarios');
   const [totalCitas, setTotalCitas] = useState(0); // Nuevo estado para el número
 
   useEffect(() => {
     const fetchUserDataAndCitas = async () => {
       if (session?.user?.email) {
         try {
-          // 1. Obtenemos el nombre y el ID del usuario
           const { data: userData, error: userError } = await supabase
             .from('usuarios')
             .select('id, nombre')
@@ -37,11 +36,10 @@ export default function HomeScreen({ navigation }: any) {
           if (userData && !userError) {
             setUserName(userData.nombre);
 
-            // 2. Contamos las citas vinculadas a ese ID
             const { count, error: countError } = await supabase
               .from('citas')
-              .select('*', { count: 'exact', head: true }) // head: true hace que no traiga los datos, solo el conteo
-              .eq('id_paciente', userData.id);
+              .select('*', { count: 'exact', head: true })
+              .eq('id', userData.id);
 
             if (!countError) {
               setTotalCitas(count || 0);
@@ -53,7 +51,7 @@ export default function HomeScreen({ navigation }: any) {
       }
     };
 
-    fetchUserDataAndCitas();
+    fetchUserDataAndCitas(); // <--- LA LLAVE QUE ENCIENDE TODO
   }, [session]);
   // ----------------------------------------------
 
@@ -75,12 +73,11 @@ export default function HomeScreen({ navigation }: any) {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
 
-        {/* HEADER MODIFICADO */}
+        {/* HEADER */}
         <View style={styles.header}>
           <Text style={styles.logo}>Medi Track</Text>
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={styles.greeting}>Buenos días,</Text>
-            {/* 3. AQUI USAMOS EL NOMBRE REAL */}
             <Text style={styles.userName}>{userName}</Text>
             
             <TouchableOpacity style={styles.logout} onPress={handleLogout}>
@@ -99,10 +96,10 @@ export default function HomeScreen({ navigation }: any) {
           </View>
 
           <View style={styles.card}>
-  <Text style={styles.cardLabel}>Total citas</Text>
-  {/* Mostramos el estado dinámico aquí */}
-  <Text style={styles.cardValue}>{totalCitas}</Text>
-</View>
+            <Text style={styles.cardLabel}>Total citas</Text>
+            <Text style={styles.cardValue}>{totalCitas}</Text>
+          </View>
+        </View>
 
         {/* BOTONES DE ACCIÓN */}
         <View style={styles.actions}>
@@ -112,6 +109,7 @@ export default function HomeScreen({ navigation }: any) {
           >
             <Text style={styles.primaryBtnText}>+ Agendar Cita</Text>
           </TouchableOpacity>
+          
           <TouchableOpacity
             style={styles.secondaryBtn}
             onPress={() => navigation.navigate('History', { patientId: session?.user?.id })}
@@ -142,8 +140,6 @@ export default function HomeScreen({ navigation }: any) {
         <TouchableOpacity onPress={() => navigation.navigate('Home')}>
           <Text style={styles.navText}>Inicio</Text>
         </TouchableOpacity>
-
-        
 
         <TouchableOpacity onPress={() => navigation.navigate('PatientProfile')}>
           <Text style={styles.navText}>Perfil</Text>

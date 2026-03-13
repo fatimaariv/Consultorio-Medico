@@ -6,8 +6,11 @@ import {
 import { Picker } from '@react-native-picker/picker';
 import { supabase } from '../supabase/supabase'; 
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useContext } from 'react';
+import { AuthContext } from '../context/AuthContext'; // Ajusta la ruta si es necesario
 
 export default function ScheduleScreen({ navigation }: any) {
+  const { session } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
   const [doctoresDB, setDoctoresDB] = useState<any[]>([]);
   const [formData, setFormData] = useState({
@@ -83,27 +86,57 @@ export default function ScheduleScreen({ navigation }: any) {
   };
 
   const handleCreateAppointment = async () => {
-    if (!formData.id_doctor || !formData.fecha || !formData.hora || !formData.motivo) {
-      Alert.alert("Error", "Por favor completa todos los campos");
-      return;
+  // 1. Validar que los campos no estén vacíos
+  if (!formData.id_doctor || !formData.fecha || !formData.hora || !formData.motivo) {
+    Alert.alert("Error", "Por favor completa todos los campos");
+    return;
+  }
+
+  // 2. Obtener el email del usuario desde la sesión
+  const userEmail = session!.user!.email!;
+  if (!userEmail) {
+    Alert.alert("Error", "No se encontró una sesión activa");
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    // 3. Buscar el ID real del paciente en la tabla 'usuarios'
+    const { data: userData, error: userError } = await supabase
+      .from('usuarios')
+      .select('id')
+      .eq('correo', userEmail)
+      .single();
+
+    if (userError || !userData) {
+      throw new Error("No se pudo identificar tu ID de usuario en la base de datos.");
     }
-    try {
-      const { error } = await supabase.from('citas').insert([{
-        id_doctor: parseInt(formData.id_doctor),
-        especialidad: formData.especialidad,
-        fecha: formData.fecha,
-        hora: formData.hora,
-        motivo: formData.motivo,
-        estado: 'pendiente',
-        id_paciente: 1 
-      }]);
-      if (error) throw error;
-      Alert.alert("Éxito", "Cita programada correctamente");
-      navigation.goBack();
-    } catch (error: any) {
-      Alert.alert("Error", "No se pudo crear la cita");
-    }
-  };
+
+    // 4. INSERTAR EN LA BASE DE DATOS
+    // Usamos Number() para asegurar que los IDs sean números y no texto
+    const { error } = await supabase.from('citas').insert([{
+      id_doctor: Number(formData.id_doctor),
+      id_paciente: Number(userData.id),
+      fecha: formData.fecha,
+      hora: formData.hora,
+      motivo: formData.motivo,
+      estado: 'pendiente',
+      // id_consultorio: null // Opcional, según tu tabla
+    }]);
+
+    if (error) throw error;
+
+    Alert.alert("Éxito", "Cita programada correctamente");
+    navigation.goBack();
+
+  } catch (error: any) {
+    console.error("Error completo:", error);
+    Alert.alert("Error", error.message || "No se pudo crear la cita");
+  } finally {
+    setLoading(false);
+  }
+};
 
   if (loading) return (
     <View style={styles.center}>
