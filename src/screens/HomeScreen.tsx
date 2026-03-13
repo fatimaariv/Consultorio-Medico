@@ -20,30 +20,40 @@ interface Appointment {
 
 export default function HomeScreen({ navigation }: any) {
   const { session } = useContext(AuthContext);
-
-  // --- 2. LOGICA PARA OBTENER EL NOMBRE REAL ---
   const [userName, setUserName] = useState('Usuario');
+  const [totalCitas, setTotalCitas] = useState(0); // Nuevo estado para el número
 
   useEffect(() => {
-    const fetchRealName = async () => {
+    const fetchUserDataAndCitas = async () => {
       if (session?.user?.email) {
         try {
-          const { data, error } = await supabase
-            .from('usuarios') // Consulta a tu tabla usuarios
-            .select('nombre')
+          // 1. Obtenemos el nombre y el ID del usuario
+          const { data: userData, error: userError } = await supabase
+            .from('usuarios')
+            .select('id, nombre')
             .eq('correo', session.user.email)
             .single();
 
-          if (data && !error) {
-            setUserName(data.nombre); // Guardamos el nombre real
+          if (userData && !userError) {
+            setUserName(userData.nombre);
+
+            // 2. Contamos las citas vinculadas a ese ID
+            const { count, error: countError } = await supabase
+              .from('citas')
+              .select('*', { count: 'exact', head: true }) // head: true hace que no traiga los datos, solo el conteo
+              .eq('id_paciente', userData.id);
+
+            if (!countError) {
+              setTotalCitas(count || 0);
+            }
           }
         } catch (error) {
-          console.log("Error al obtener nombre:", error);
+          console.log("Error en la carga de datos:", error);
         }
       }
     };
 
-    fetchRealName();
+    fetchUserDataAndCitas();
   }, [session]);
   // ----------------------------------------------
 
@@ -67,7 +77,7 @@ export default function HomeScreen({ navigation }: any) {
 
         {/* HEADER MODIFICADO */}
         <View style={styles.header}>
-          <Text style={styles.logo}>Meditrack</Text>
+          <Text style={styles.logo}>Medi Track</Text>
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={styles.greeting}>Buenos días,</Text>
             {/* 3. AQUI USAMOS EL NOMBRE REAL */}
@@ -89,10 +99,10 @@ export default function HomeScreen({ navigation }: any) {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.cardLabel}>Total citas</Text>
-            <Text style={styles.cardValue}>8</Text>
-          </View>
-        </View>
+  <Text style={styles.cardLabel}>Total citas</Text>
+  {/* Mostramos el estado dinámico aquí */}
+  <Text style={styles.cardValue}>{totalCitas}</Text>
+</View>
 
         {/* BOTONES DE ACCIÓN */}
         <View style={styles.actions}>
@@ -133,9 +143,7 @@ export default function HomeScreen({ navigation }: any) {
           <Text style={styles.navText}>Inicio</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.navigate('Schedule')}>
-          <Text style={styles.navText}>Citas</Text>
-        </TouchableOpacity>
+        
 
         <TouchableOpacity onPress={() => navigation.navigate('PatientProfile')}>
           <Text style={styles.navText}>Perfil</Text>
