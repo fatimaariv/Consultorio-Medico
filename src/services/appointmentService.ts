@@ -1,13 +1,27 @@
 import { supabase } from '../supabase/supabase';
 
-export const getPatientHistory = async (patientId: number) => {
-  const { data, error } = await supabase
-    .from('citas')
-    .select('*, doctores(nombre)') // Trae la info de la cita y el nombre del doctor
-    .eq('id_paciente', patientId)
-    .eq('estado', 'completada') // O como lo llames en tu base de datos
-    .order('fecha', { ascending: false });
+export const getPatientHistory = async (userEmail: string) => {
+  // Primero buscamos el ID numérico en tu tabla 'usuarios'
+  const { data: usuario, error: errorUsuario } = await supabase
+    .from('usuarios')
+    .select('id')
+    .eq('correo', userEmail) 
+    .single();
 
-  if (error) throw error;
-  return data;
+  if (errorUsuario || !usuario) return [];
+
+  // Luego buscamos las citas usando ese ID numérico
+  const { data, error } = await supabase
+  .from('citas')
+  .select(`
+    id,
+    fecha,
+    motivo,
+    doctores (
+      nombre
+    )
+  `)
+  .eq('id_paciente', usuario.id)
+  .eq('estado', 'completada')
+  .order('fecha', { ascending: false });
 };

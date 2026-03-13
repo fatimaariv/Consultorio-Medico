@@ -1,12 +1,12 @@
 import React, { useContext } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Alert, 
-  ScrollView, 
-  SafeAreaView 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  ScrollView,
+  SafeAreaView
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import { supabase } from '../supabase/supabase';
@@ -38,7 +38,7 @@ export default function HomeScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        
+
         {/* HEADER */}
         <View style={styles.header}>
           <Text style={styles.logo}>Meditrack</Text>
@@ -68,13 +68,23 @@ export default function HomeScreen({ navigation }: any) {
 
         {/* BOTONES DE ACCIÓN */}
         <View style={styles.actions}>
-          <TouchableOpacity 
-            style={styles.primaryBtn} 
-             onPress={() => navigation.navigate('Schedule')} // <--- ESTA ES LA CONEXIÓN
-            >
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={() => navigation.navigate('Schedule')} // <--- ESTA ES LA CONEXIÓN
+          >
             <Text style={styles.primaryBtnText}>+ Agendar Cita</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryBtn}>
+          <TouchableOpacity
+            style={styles.secondaryBtn}
+            onPress={() => {
+              console.log("Navegando a History con ID:", session?.user?.id);
+              try {
+                navigation.navigate('History', { patientId: session?.user?.id });
+              } catch (e) {
+                console.log("Error de navegación:", e);
+              }
+            }}
+          >
             <Text style={styles.secondaryBtnText}>Ver Historial</Text>
           </TouchableOpacity>
         </View>
@@ -101,11 +111,11 @@ export default function HomeScreen({ navigation }: any) {
         <TouchableOpacity onPress={() => navigation.navigate('Home')}>
           <Text style={styles.navText}>Inicio</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity onPress={() => navigation.navigate('Schedule')}>
           <Text style={styles.navText}>Citas</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity onPress={() => navigation.navigate('PatientProfile')}>
           <Text style={styles.navText}>Perfil</Text>
         </TouchableOpacity>

@@ -1,28 +1,27 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react'; // 1. Agregamos useContext
 import { View, Text, FlatList, StyleSheet, SafeAreaView } from 'react-native';
 import { getPatientHistory } from '../services/appointmentService';
+import { AuthContext } from '../context/AuthContext'; // 2. Importamos el Contexto
 
-// Definimos la estructura de la cita para que TypeScript esté feliz
 interface Cita {
   id: number;
   fecha: string;
   motivo: string;
-  doctores?: {
-    nombre: string;
-  };
+  doctores?: { nombre: string };
 }
 
-export default function HistoryScreen({ route }: any) {
+export default function HistoryScreen() { // Ya no necesitamos 'route'
   const [history, setHistory] = useState<Cita[]>([]);
+  const { session } = useContext(AuthContext); // 3. Obtenemos la sesión para sacar el email
   
-  // Obtenemos el patientId. Si no viene nada, usamos un valor por defecto para evitar errores.
-  const { patientId } = route?.params || { patientId: 0 };
+  const userEmail = session?.user?.email;
 
   useEffect(() => {
     const fetchHistory = async () => {
-      if (patientId > 0) {
+      // 4. Usamos el email para buscar
+      if (userEmail) {
         try {
-          const data = await getPatientHistory(patientId);
+          const data = await getPatientHistory(userEmail);
           setHistory(data as any);
         } catch (error) {
           console.error("Error al obtener historial:", error);
@@ -30,8 +29,7 @@ export default function HistoryScreen({ route }: any) {
       }
     };
     fetchHistory();
-  }, [patientId]);
-
+  }, [userEmail]);
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.header}>Mi Historial de Citas</Text>

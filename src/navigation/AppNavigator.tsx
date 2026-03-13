@@ -13,7 +13,7 @@ import AdmiHome from '../screens/AdmiHome';
 import DoctorHome from '../screens/DoctorHome'; 
 import PatientProfile from '../screens/PatientProfile';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
-
+import HistoryScreen from '../screens/HistoryScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -42,6 +42,7 @@ return (
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="Schedule" component={ScheduleScreen} />
             <Stack.Screen name="PatientProfile" component={PatientProfile} />
+            <Stack.Screen name="History" component={HistoryScreen} options={{ headerShown: true, title: 'Historial' }} />
           </>
         )}
       </>
