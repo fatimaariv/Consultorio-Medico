@@ -26,7 +26,7 @@ const PatientProfile = ({ navigation }: any) => {
   const [patientData, setPatientData] = useState({
     fecha_nacimiento: '',
     enfermedades: '',
-    id_usuario: null as number | null
+    id: null as number | null
   });
 
   useEffect(() => {
@@ -46,91 +46,99 @@ const PatientProfile = ({ navigation }: any) => {
   };
 
   const loadProfileData = async () => {
-    try {
-      setLoading(true);
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+  try {
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
 
-      if (authError || !user) {
-        Alert.alert("Error", "No se encontró una sesión activa");
-        return;
-      }
+    if (!user || !user.email) return;
 
-      const { data: dbUser, error: userErr } = await supabase
-        .from('usuarios')
-        .select('*')
-        .eq('correo', user.email as string)
-        .single();
+    const emailLimpio = user.email.toLowerCase().trim();
+    console.log("Intentando vincular correo:", emailLimpio);
 
-      if (userErr || !dbUser) throw new Error("No se encontró el perfil en la tabla usuarios");
-      
-      setUserData(dbUser);
+    // Buscamos en 'usuarios' sin usar .single() para que no explote si hay dudas
+    const { data: usersFound, error: userErr } = await supabase
+      .from('usuarios')
+      .select('*')
+      .ilike('correo', emailLimpio);
 
-      const { data: patient } = await supabase
-        .from('pacientes')
-        .select('*')
-        .eq('id_usuario', dbUser.id)
-        .single();
-
-      if (patient) {
-        setIsPatient(true);
-        setPatientData({
-          fecha_nacimiento: patient.fecha_nacimiento,
-          enfermedades: patient.enfermedades || '',
-          id_usuario: dbUser.id
-        });
-        // Si ya hay fecha, actualizamos el estado del calendario
-        if (patient.fecha_nacimiento) setDate(new Date(patient.fecha_nacimiento));
-      } else {
-        setIsPatient(false);
-        setPatientData(prev => ({ ...prev, id_usuario: dbUser.id }));
-      }
-
-    } catch (error: any) {
-      Alert.alert("Error de carga", error.message);
-    } finally {
+    if (userErr || !usersFound || usersFound.length === 0) {
+      console.log("No se encontró en tabla usuarios:", userErr);
       setLoading(false);
+      return;
     }
-  };
+
+    const dbUser = usersFound[0]; // Tomamos el primer resultado
+    setUserData(dbUser);
+    
+    // ESTA LÍNEA ES VITAL: Actualiza el ID para el registro de paciente
+    setPatientData(prev => ({ ...prev, id: dbUser.id }));
+
+    // Ahora buscamos si ya existe en la tabla 'pacientes'
+    const { data: patientsFound } = await supabase
+      .from('pacientes')
+      .select('*')
+      .eq('id', dbUser.id);
+
+    if (patientsFound && patientsFound.length > 0) {
+      const patient = patientsFound[0];
+      setIsPatient(true);
+      setPatientData({
+        fecha_nacimiento: patient.fecha_nacimiento,
+        enfermedades: patient.enfermedades || '',
+        id: dbUser.id
+      });
+      if (patient.fecha_nacimiento) setDate(new Date(patient.fecha_nacimiento));
+    }
+  } catch (error) {
+    console.error("Error en carga completa:", error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSaveProfile = async () => {
-    if (!patientData.id_usuario) {
-      Alert.alert("Error", "No se pudo identificar al usuario");
-      return;
-    }
-    if (!patientData.fecha_nacimiento) {
-      Alert.alert("Error", "La fecha de nacimiento es obligatoria");
-      return;
+  // Verificamos que tengamos los datos mínimos
+  if (!patientData.id) {
+    Alert.alert("Error", "No se encontró tu ID de usuario (ID: null)");
+    return;
+  }
+  if (!patientData.fecha_nacimiento) {
+    Alert.alert("Atención", "Selecciona tu fecha de nacimiento");
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    // Creamos el objeto exactamente como lo pide la tabla 'pacientes'
+    const payload = {
+      id: Number(patientData.id), // Forzamos que sea número
+      fecha_nacimiento: patientData.fecha_nacimiento,
+      enfermedades: patientData.enfermedades || ""
+    };
+
+    console.log("Intentando insertar en pacientes:", payload);
+
+    // Usamos (as any) para saltar cualquier restricción de tipos de TS
+    const { error } = await (supabase.from('pacientes') as any)
+      .insert([payload]);
+
+    if (error) {
+      console.log("Detalle del error:", error);
+      // Si el error dice que no existe el ID 4, es que algo anda mal en la relación de la DB
+      throw error;
     }
 
-    try {
-      setLoading(true);
-      const datosParaGuardar: any = {
-        id_usuario: patientData.id_usuario,
-        fecha_nacimiento: patientData.fecha_nacimiento,
-        enfermedades: patientData.enfermedades || ""
-      };
+    setIsPatient(true);
+    Alert.alert("¡Éxito!", "Registro completado.");
+    navigation.goBack(); // Opcional: regresar a la pantalla anterior
 
-      if (isPatient) {
-        const { error } = await (supabase.from('pacientes') as any)
-          .update(datosParaGuardar)
-          .eq('id_usuario', datosParaGuardar.id_usuario);
-        
-        if (error) throw error;
-        Alert.alert("Éxito", "Perfil médico actualizado");
-      } else {
-        const { error } = await (supabase.from('pacientes') as any)
-          .insert([datosParaGuardar]);
-        
-        if (error) throw error;
-        setIsPatient(true);
-        Alert.alert("¡Bienvenido!", "Ahora ya estás registrado como paciente");
-      }
-    } catch (error: any) {
-      Alert.alert("Error", error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (error: any) {
+    Alert.alert("Error de Registro", error.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
 
