@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react'; // 1. Agregamos useState y useEffect
+import React, { useContext, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,22 +11,17 @@ import {
 import { AuthContext } from '../context/AuthContext';
 import { supabase } from '../supabase/supabase';
 
-interface Appointment {
-  id: number;
-  doctor: string;
-  time: string;
-  type: string;
-}
-
 export default function HomeScreen({ navigation }: any) {
   const { session } = useContext(AuthContext);
   const [userName, setUserName] = useState('usuarios');
-  const [totalCitas, setTotalCitas] = useState(0); // Nuevo estado para el número
+  const [totalCitas, setTotalCitas] = useState(0);
+  const [citasReales, setCitasReales] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchUserDataAndCitas = async () => {
       if (session?.user?.email) {
         try {
+          // 1. Obtenemos datos del usuario logueado
           const { data: userData, error: userError } = await supabase
             .from('usuarios')
             .select('id, nombre')
@@ -36,36 +31,61 @@ export default function HomeScreen({ navigation }: any) {
           if (userData && !userError) {
             setUserName(userData.nombre);
 
-            const { count, error: countError } = await supabase
+            // 2. Contador total de citas (Histórico)
+            const { count } = await supabase
               .from('citas')
               .select('*', { count: 'exact', head: true })
-              .eq('id', userData.id);
+              .eq('id_paciente', userData.id);
+            setTotalCitas(count || 0);
 
-            if (!countError) {
-              setTotalCitas(count || 0);
+            // 3. OBTENER SOLO CITAS PRÓXIMAS (Fecha >= Hoy)
+            const hoy = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
+
+            const { data: citasData, error: citasError } = await supabase
+              .from('citas')
+              .select(`
+                id,
+                fecha,
+                hora,
+                doctores (
+                  usuarios (
+                    nombre,
+                    apellido1
+                  )
+                )
+              `)
+              .eq('id_paciente', userData.id)
+              .gte('fecha', hoy) // <--- FILTRO: Solo de hoy en adelante
+              .order('fecha', { ascending: true })
+              .order('hora', { ascending: true });
+
+            if (!citasError && citasData) {
+              const formateadas = citasData.map((c: any) => ({
+                id: c.id,
+                fecha: c.fecha,
+                hora: c.hora,
+                // Si la relación está bien hecha, sacamos el nombre del doctor
+                nombreDoctor: c.doctores?.usuarios 
+                  ? `Dr. ${c.doctores.usuarios.nombre} ${c.doctores.usuarios.apellido1}`
+                  : "Doctor no asignado"
+              }));
+              setCitasReales(formateadas);
             }
           }
         } catch (error) {
-          console.log("Error en la carga de datos:", error);
+          console.log("Error:", error);
         }
       }
     };
 
-    fetchUserDataAndCitas(); // <--- LA LLAVE QUE ENCIENDE TODO
+    fetchUserDataAndCitas();
   }, [session]);
-  // ----------------------------------------------
-
-  const appointments: Appointment[] = [
-    { id: 1, doctor: "Dr. Ramírez", time: "10:30 AM", type: "Consulta General" },
-    { id: 2, doctor: "Dra. López", time: "1:00 PM", type: "Resultados" },
-  ];
 
   const handleLogout = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-    } catch (error: any) {
-      Alert.alert("Error", "No se pudo cerrar la sesión: " + error.message);
+      await supabase.auth.signOut();
+    } catch (error) {
+      Alert.alert("Error", "No se pudo cerrar sesión");
     }
   };
 
@@ -79,7 +99,6 @@ export default function HomeScreen({ navigation }: any) {
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={styles.greeting}>Buenos días,</Text>
             <Text style={styles.userName}>{userName}</Text>
-            
             <TouchableOpacity style={styles.logout} onPress={handleLogout}>
               <Text style={styles.logoutText}>Cerrar sesión</Text>
             </TouchableOpacity>
@@ -88,59 +107,56 @@ export default function HomeScreen({ navigation }: any) {
 
         <Text style={styles.title}>Tu agenda</Text>
 
-        {/* RESUMEN (CARDS) */}
+        {/* RESUMEN */}
         <View style={styles.summaryContainer}>
           <View style={styles.card}>
             <Text style={styles.cardLabel}>Próxima cita</Text>
-            <Text style={styles.cardValue}>10:30 AM</Text>
+            <Text style={styles.cardValue}>
+              {citasReales.length > 0 ? citasReales[0].hora : "--:--"}
+            </Text>
           </View>
-
           <View style={styles.card}>
             <Text style={styles.cardLabel}>Total citas</Text>
             <Text style={styles.cardValue}>{totalCitas}</Text>
           </View>
         </View>
 
-        {/* BOTONES DE ACCIÓN */}
+        {/* ACCIONES */}
         <View style={styles.actions}>
-          <TouchableOpacity
-            style={styles.primaryBtn}
-            onPress={() => navigation.navigate('Schedule')}
-          >
+          <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('Schedule')}>
             <Text style={styles.primaryBtnText}>+ Agendar Cita</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={styles.secondaryBtn}
-            onPress={() => navigation.navigate('History', { patientId: session?.user?.id })}
-          >
+          <TouchableOpacity style={styles.secondaryBtn} onPress={() => navigation.navigate('History')}>
             <Text style={styles.secondaryBtnText}>Ver Historial</Text>
           </TouchableOpacity>
         </View>
 
         <Text style={styles.subtitle}>Próximas Citas</Text>
 
-        {/* LISTA DE CITAS */}
-        {appointments.map((appointment) => (
-          <TouchableOpacity key={appointment.id} style={styles.appointmentItem}>
-            <View>
-              <Text style={styles.appointmentDoctor}>{appointment.doctor}</Text>
-              <Text style={styles.appointmentDetail}>
-                {appointment.time} - {appointment.type}
-              </Text>
-            </View>
-            <Text style={styles.arrow}>›</Text>
-          </TouchableOpacity>
-        ))}
+        {/* LISTA DE CITAS FUTURAS */}
+        {citasReales.length > 0 ? (
+          citasReales.map((cita) => (
+            <TouchableOpacity key={cita.id} style={styles.appointmentItem}>
+              <View>
+                <Text style={styles.appointmentDoctor}>{cita.nombreDoctor}</Text>
+                <Text style={styles.appointmentDetail}>
+                  {cita.fecha} - {cita.hora}
+                </Text>
+              </View>
+              <Text style={styles.arrow}>›</Text>
+            </TouchableOpacity>
+          ))
+        ) : (
+          <Text style={{ color: "#666", fontStyle: "italic" }}>No tienes citas próximamente.</Text>
+        )}
 
       </ScrollView>
 
-      {/* NAVBAR INFERIOR */}
+      {/* NAVBAR */}
       <View style={styles.bottomNav}>
         <TouchableOpacity onPress={() => navigation.navigate('Home')}>
           <Text style={styles.navText}>Inicio</Text>
         </TouchableOpacity>
-
         <TouchableOpacity onPress={() => navigation.navigate('PatientProfile')}>
           <Text style={styles.navText}>Perfil</Text>
         </TouchableOpacity>
@@ -148,6 +164,7 @@ export default function HomeScreen({ navigation }: any) {
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
