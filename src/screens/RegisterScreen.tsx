@@ -71,115 +71,113 @@ export default function RegisterScreen({ navigation }: any) {
       setLoading(false);
     }
   };
-
-  
   
   return (
     <KeyboardAvoidingView 
-    behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-    style={{ flex: 1 }}
-  >
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.brand}>MediTrak</Text>
-      <Text style={styles.title}>Nueva Cuenta</Text>
-      
-      <View style={styles.inputGroup}>
-        {/* Nombres */}
-        <TextInput 
-          placeholder="Nombre(s)" 
-          style={styles.input} 
-          onChangeText={(text) => setFormData({...formData, nombre: text})}
-        />
-        
-        {/* Apellidos en una sola fila */}
-        <View style={styles.row}>
-          <TextInput 
-            placeholder="Ap. Paterno" 
-            style={[styles.input, { flex: 1, marginRight: 5 }]} 
-            onChangeText={(text) => setFormData({...formData, apellido_p: text})}
-          />
-          <TextInput 
-            placeholder="Ap. Materno" 
-            style={[styles.input, { flex: 1, marginLeft: 5 }]} 
-            onChangeText={(text) => setFormData({...formData, apellido_m: text})}
-          />
-        </View>
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0} 
+      style={{ flex: 1, backgroundColor: '#F8F9FA' }}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        {/* Usamos un solo ScrollView que envuelva TODO el contenido */}
+        <ScrollView 
+          contentContainerStyle={styles.container} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled" 
+        >
+          <Text style={styles.brand}>MediTrak</Text>
+          <Text style={styles.title}>Nueva Cuenta</Text>
+          
+          <View style={styles.inputGroup}>
+            <TextInput 
+              placeholder="Nombre(s)" 
+              style={styles.input} 
+              onChangeText={(text) => setFormData({...formData, nombre: text})}
+            />
+            
+            <View style={styles.row}>
+              <TextInput 
+                placeholder="Ap. Paterno" 
+                style={[styles.input, { flex: 1, marginRight: 5 }]} 
+                onChangeText={(text) => setFormData({...formData, apellido_p: text})}
+              />
+              <TextInput 
+                placeholder="Ap. Materno" 
+                style={[styles.input, { flex: 1, marginLeft: 5 }]} 
+                onChangeText={(text) => setFormData({...formData, apellido_m: text})}
+              />
+            </View>
 
-        {/* Teléfono */}
-        <TextInput 
-          placeholder="Teléfono (10 dígitos)" 
-          style={styles.input} 
-          keyboardType="phone-pad"
-          maxLength={10}
-          onChangeText={(text) => setFormData({...formData, telefono: text})}
-        />
+            <TextInput 
+              placeholder="Teléfono (10 dígitos)" 
+              style={styles.input} 
+              keyboardType="phone-pad"
+              maxLength={10}
+              onChangeText={(text) => setFormData({...formData, telefono: text})}
+            />
 
-        {/* Selector de Género (Botones) */}
-        <Text style={styles.label}>Género</Text>
-        <View style={styles.genderContainer}>
+            <Text style={styles.label}>Género</Text>
+            <View style={styles.genderContainer}>
+              <TouchableOpacity 
+                style={[
+                  styles.genderButton, 
+                  formData.genero === 'masculino' && styles.genderButtonSelected
+                ]}
+                onPress={() => setFormData({...formData, genero: 'masculino'})}
+              >
+                <Text style={[
+                  styles.genderText, 
+                  formData.genero === 'masculino' && styles.genderTextSelected
+                ]}>Masculino</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[
+                  styles.genderButton, 
+                  formData.genero === 'femenino' && styles.genderButtonSelected
+                ]}
+                onPress={() => setFormData({...formData, genero: 'femenino'})}
+              >
+                <Text style={[
+                  styles.genderText, 
+                  formData.genero === 'femenino' && styles.genderTextSelected
+                ]}>Femenino</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TextInput 
+              placeholder="Correo electrónico" 
+              style={styles.input} 
+              autoCapitalize="none"
+              keyboardType="email-address"
+              onChangeText={(text) => setFormData({...formData, email: text})}
+            />
+            <TextInput 
+              placeholder="Contraseña" 
+              style={styles.input} 
+              secureTextEntry 
+              onChangeText={(text) => setFormData({...formData, password: text})}
+            />
+          </View>
+
           <TouchableOpacity 
-            style={[
-              styles.genderButton, 
-              formData.genero === 'masculino' && styles.genderButtonSelected
-            ]}
-            onPress={() => setFormData({...formData, genero: 'masculino'})}
+            style={[styles.button, loading && { opacity: 0.7 }]} 
+            onPress={handleRegister} 
+            disabled={loading}
           >
-            <Text style={[
-              styles.genderText, 
-              formData.genero === 'masculino' && styles.genderTextSelected
-            ]}>Masculino</Text>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Registrarse</Text>
+            )}
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[
-              styles.genderButton, 
-              formData.genero === 'femenino' && styles.genderButtonSelected
-            ]}
-            onPress={() => setFormData({...formData, genero: 'femenino'})}
-          >
-            <Text style={[
-              styles.genderText, 
-              formData.genero === 'femenino' && styles.genderTextSelected
-            ]}>Femenino</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.footer}>
+            <Text style={styles.link}>¿Ya tienes cuenta? Inicia sesión</Text>
           </TouchableOpacity>
-        </View>
-
-        {/* Email y Contraseña */}
-        <TextInput 
-          placeholder="Correo electrónico" 
-          style={styles.input} 
-          autoCapitalize="none"
-          keyboardType="email-address"
-          onChangeText={(text) => setFormData({...formData, email: text})}
-        />
-        <TextInput 
-          placeholder="Contraseña" 
-          style={styles.input} 
-          secureTextEntry 
-          onChangeText={(text) => setFormData({...formData, password: text})}
-        />
-      </View>
-
-      <TouchableOpacity 
-        style={[styles.button, loading && { opacity: 0.7 }]} 
-        onPress={handleRegister} 
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Registrarse</Text>
-        )}
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.footer}>
-        <Text style={styles.link}>¿Ya tienes cuenta? Inicia sesión</Text>
-      </TouchableOpacity>
-    </ScrollView>
-  
-  </TouchableWithoutFeedback>
-  </KeyboardAvoidingView>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 

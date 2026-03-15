@@ -14,6 +14,7 @@ import DoctorHome from '../screens/DoctorHome';
 import PatientProfile from '../screens/PatientProfile';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import HistoryScreen from '../screens/HistoryScreen';
+import VerifyCodeScreen from '../screens/VerifyCodeScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -51,6 +52,7 @@ return (
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+        <Stack.Screen name="VerifyCode" component={VerifyCodeScreen} />
       </>
     )}
   </Stack.Navigator>

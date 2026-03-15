@@ -1,5 +1,19 @@
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet, Text, Alert, ActivityIndicator } from 'react-native';
+// Se agregaron los componentes faltantes en el import
+import { 
+  View, 
+  TextInput, 
+  TouchableOpacity, 
+  StyleSheet, 
+  Text, 
+  Alert, 
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+  ScrollView 
+} from 'react-native';
 import { login } from '../services/authService';
 
 export default function LoginScreen({ navigation }: any) {
@@ -15,7 +29,6 @@ export default function LoginScreen({ navigation }: any) {
     setLoading(true);
     try {
       await login(email, password);
-      // No necesitas navegar manualmente a Home, AuthContext lo hará por ti
     } catch (error: any) {
       Alert.alert("Error", error.message);
     } finally {
@@ -24,42 +37,63 @@ export default function LoginScreen({ navigation }: any) {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.brand}>Medi Track</Text>
-      <Text style={styles.title}>Iniciar Sesión</Text>
-      
-      <View style={styles.inputGroup}>
-        <TextInput 
-          placeholder="Correo electrónico" 
-          style={styles.input} 
-          onChangeText={setEmail}
-          autoCapitalize="none"
-        />
-        <TextInput 
-          placeholder="Contraseña" 
-          style={styles.input} 
-          secureTextEntry 
-          onChangeText={setPassword}
-        />
-      </View>
+    <KeyboardAvoidingView 
+      // Ajuste para que la vista suba cuando sale el teclado
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+      style={{ flex: 1, backgroundColor: '#F8F9FA' }}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView 
+          // Hereda los estilos de tu contenedor para centrar el contenido
+          contentContainerStyle={styles.container} 
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.brand}>Medi Track</Text>
+          <Text style={styles.title}>Iniciar Sesión</Text>
+          
+          <View style={styles.inputGroup}>
+            <TextInput 
+              placeholder="Correo electrónico" 
+              style={styles.input} 
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address" // Mejora la experiencia para el email
+            />
+            <TextInput 
+              placeholder="Contraseña" 
+              style={styles.input} 
+              secureTextEntry 
+              onChangeText={setPassword}
+            />
+          </View>
 
-      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Entrar</Text>}
-      </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.button} 
+            onPress={handleLogin} 
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Entrar</Text>
+            )}
+          </TouchableOpacity>
 
-      <View style={styles.footer}>
-        <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-          <Text style={styles.link}>Crear cuenta</Text>
-        </TouchableOpacity>
-        
-        <Text style={styles.separator}>|</Text>
-        
-        <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
-          <Text style={styles.link}>Olvidé mi contraseña</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-    
+          <View style={styles.footer}>
+            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+              <Text style={styles.link}>Crear cuenta</Text>
+            </TouchableOpacity>
+            
+            <Text style={styles.separator}>|</Text>
+            
+            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+              <Text style={styles.link}>Olvidé mi contraseña</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
