@@ -11,7 +11,7 @@ import {
   TextInput,
   Platform 
 } from "react-native";
-import { supabase } from "../supabase/supabase";
+import { supabase } from "../../supabase/supabase";
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 const PatientProfile = ({ navigation }: any) => {

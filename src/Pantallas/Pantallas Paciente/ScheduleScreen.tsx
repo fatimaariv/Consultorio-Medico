@@ -4,10 +4,10 @@ import {
   Alert, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator 
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { supabase } from '../supabase/supabase'; 
+import { supabase } from '../../supabase/supabase'; // Ajusta la ruta si es necesario
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useContext } from 'react';
-import { AuthContext } from '../context/AuthContext'; // Ajusta la ruta si es necesario
+import { AuthContext } from '../../context/AuthContext'; 
 
 export default function ScheduleScreen({ navigation }: any) {
   const { session } = useContext(AuthContext);

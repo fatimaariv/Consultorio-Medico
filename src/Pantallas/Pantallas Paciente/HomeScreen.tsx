@@ -8,8 +8,8 @@ import {
   ScrollView,
   SafeAreaView
 } from 'react-native';
-import { AuthContext } from '../context/AuthContext';
-import { supabase } from '../supabase/supabase';
+import { AuthContext } from '../../context/AuthContext';
+import { supabase } from '../../supabase/supabase';
 import { useFocusEffect } from '@react-navigation/native'; // 2. Importamos useFocusEffect
 
 export default function HomeScreen({ navigation }: any) {

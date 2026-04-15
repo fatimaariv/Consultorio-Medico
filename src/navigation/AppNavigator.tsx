@@ -3,18 +3,22 @@ import React, { useContext } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthContext } from '../context/AuthContext';
-import ScheduleScreen from '../screens/ScheduleScreen';
+import ScheduleScreen from '../Pantallas/Pantallas Paciente/ScheduleScreen';
+
 
 // Importación de pantallas
-import HomeScreen from '../screens/HomeScreen';
-import LoginScreen from '../screens/LoginScreen';
-import RegisterScreen from '../screens/RegisterScreen';
-import AdmiHome from '../screens/AdmiHome'; 
-import DoctorHome from '../screens/DoctorHome'; 
-import PatientProfile from '../screens/PatientProfile';
-import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
-import HistoryScreen from '../screens/HistoryScreen';
-import VerifyCodeScreen from '../screens/VerifyCodeScreen';
+import HomeScreen from '../Pantallas/Pantallas Paciente/HomeScreen';
+import LoginScreen from '../Pantallas/LoginScreen';
+import RegisterScreen from '../Pantallas/Pantallas Paciente/RegisterScreen';
+import AdmiHome from '../Pantallas/Pantallas Admi/AdmiHome';
+import DoctorHome from '../Pantallas/Pantallas Doctor/DoctorHome'; 
+import PatientProfile from '../Pantallas/Pantallas Paciente/PatientProfile'; 
+import ForgotPasswordScreen from '../Pantallas/Pantallas Paciente/ForgotPasswordScreen';
+import HistoryScreen from '../Pantallas/Pantallas Paciente/HistoryScreen';
+import VerifyCodeScreen from '../Pantallas/Pantallas Paciente/VerifyCodeScreen';
+import Agenda from '../Pantallas/Pantallas Doctor/Agenda';
+import Pacientes from '../Pantallas/Pantallas Doctor/PerfilDoc';
+import CitasProgramadas from '../Pantallas/Pantallas Doctor/CitasProgramadas';
 
 const Stack = createNativeStackNavigator();
 
@@ -35,7 +39,15 @@ return (
     {session && userRole !== null ? (
       <>
         {userRole === 1 && <Stack.Screen name="AdmiHome" component={AdmiHome} />}
-        {userRole === 2 && <Stack.Screen name="DoctorHome" component={DoctorHome} />}
+        
+        {userRole === 2 && (
+          <>
+            <Stack.Screen name="DoctorHome" component={DoctorHome} />
+            <Stack.Screen name="Agenda" component={Agenda} />
+            <Stack.Screen name="Pacientes" component={Pacientes} />
+            <Stack.Screen name="CitasProgramadas" component={CitasProgramadas} />
+          </>
+        )}
         
         {/* Agrupamos las pantallas del Rol 3 (Paciente) correctamente */}
         {userRole === 3 && (

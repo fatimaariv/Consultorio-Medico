@@ -13,7 +13,7 @@ import {
   ActivityIndicator, 
   ScrollView 
 } from 'react-native';
-import { supabase } from '../supabase/supabase';
+import { supabase } from '../../supabase/supabase';
 
 export default function RegisterScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);

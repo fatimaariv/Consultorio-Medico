@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet, Text, Alert, ActivityIndicator } from 'react-native';
-import { supabase } from '../supabase/supabase';
+import { supabase } from '../../supabase/supabase';
 
 export default function VerifyCodeScreen({ route, navigation }: any) {
   const { email } = route.params; // Recibimos el email de la pantalla anterior

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
-import { supabase } from '../supabase/supabase'; // Importamos supabase para el logout
+import { supabase } from '../../supabase/supabase'; // Importamos supabase para el logout
 
 export default function AdmiHome() {
 

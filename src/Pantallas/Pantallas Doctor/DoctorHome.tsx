@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
-import { AuthContext } from '../context/AuthContext';
-import { supabase } from '../supabase/supabase';
+import { AuthContext } from '../../context/AuthContext';
+import { supabase } from '../../supabase/supabase';
 
 export default function DoctorHome() {
   const { session } = useContext(AuthContext);

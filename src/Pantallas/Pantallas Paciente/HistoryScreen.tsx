@@ -8,8 +8,8 @@ import {
   ActivityIndicator,
   StatusBar
 } from 'react-native';
-import { AuthContext } from '../context/AuthContext';
-import { supabase } from '../supabase/supabase';
+import { AuthContext } from '../../context/AuthContext';
+import { supabase } from '../../supabase/supabase';
 
 interface Cita {
   id: number;
