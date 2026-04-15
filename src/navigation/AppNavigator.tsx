@@ -19,6 +19,7 @@ import VerifyCodeScreen from '../Pantallas/Pantallas Paciente/VerifyCodeScreen';
 import Agenda from '../Pantallas/Pantallas Doctor/Agenda';
 import Pacientes from '../Pantallas/Pantallas Doctor/PerfilDoc';
 import CitasProgramadas from '../Pantallas/Pantallas Doctor/CitasProgramadas';
+import HistorialDeCitas from '../Pantallas/Pantallas Doctor/HistorialDeCitas';
 
 const Stack = createNativeStackNavigator();
 
@@ -46,6 +47,7 @@ return (
             <Stack.Screen name="Agenda" component={Agenda} />
             <Stack.Screen name="Pacientes" component={Pacientes} />
             <Stack.Screen name="CitasProgramadas" component={CitasProgramadas} />
+            <Stack.Screen name="HistorialDeCitas" component={HistorialDeCitas} />
           </>
         )}
         
