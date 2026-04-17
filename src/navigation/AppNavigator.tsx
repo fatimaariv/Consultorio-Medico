@@ -4,7 +4,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthContext } from '../context/AuthContext';
 import ScheduleScreen from '../Pantallas/Pantallas Paciente/ScheduleScreen';
-
+import GestionarConsultorios from '../Pantallas/Pantallas Admi/GestionarConsultorios/index';
 
 // Importación de pantallas
 import HomeScreen from '../Pantallas/Pantallas Paciente/HomeScreen';
@@ -39,7 +39,12 @@ return (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     {session && userRole !== null ? (
       <>
-        {userRole === 1 && <Stack.Screen name="AdmiHome" component={AdmiHome} />}
+        {userRole === 1 && (
+  <>
+    <Stack.Screen name="AdmiHome" component={AdmiHome} />
+    <Stack.Screen name="GestionarConsultorios" component={GestionarConsultorios} />
+  </>
+)}
         
         {userRole === 2 && (
           <>
