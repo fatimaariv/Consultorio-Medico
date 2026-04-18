@@ -25,53 +25,66 @@ export default function RegisterScreen({ navigation }: any) {
     password: '',
     telefono: '',
     genero: '', // Se llenará con los botones
+    fecha_nacimiento: '', 
+    enfermedades: ''
   });
 
   const handleRegister = async () => {
-    const { nombre, apellido_p, apellido_m, email, password, telefono, genero } = formData;
-    
-    // Validación de campos obligatorios
-    if (!nombre || !apellido_p || !email || !password || !telefono || !genero) {
-      Alert.alert("Atención", "Por favor completa todos los campos.");
-      return;
-    }
+  const { nombre, apellido_p, apellido_m, email, password, telefono, genero, fecha_nacimiento, enfermedades } = formData;
+  
+  // Validación: Asegúrate de incluir los campos de paciente
+  if (!nombre || !apellido_p || !email || !password || !fecha_nacimiento) {
+    Alert.alert("Atención", "Por favor completa los campos obligatorios.");
+    return;
+  }
 
-    setLoading(true);
-    try {
-      // 1. Crear el usuario en la autenticación de Supabase
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: email,
-        password: password,
-      });
+  setLoading(true);
+  try {
+    // 1. Crear en Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+    if (authError) throw authError;
 
-      if (authError) throw authError;
+    // 2. Insertar en tabla 'usuarios' y obtener el ID generado (.select().single())
+    const { data: newUser, error: dbError } = await supabase
+      .from('usuarios')
+      .insert([{
+        nombre,
+        apellido1: apellido_p,
+        apellido2: apellido_m || '',
+        correo: email,
+        contrasena: password,
+        genero, 
+        id_rol: 3, // Rol Paciente
+        telefono,
+      }])
+      .select()
+      .single(); // Esto nos devuelve el objeto creado con su ID
 
-      // 2. Insertar los datos adicionales en tu tabla 'usuarios'
-      const { error: dbError } = await supabase
-        .from('usuarios')
-        .insert([
-          {
-            nombre: nombre,
-            apellido1: apellido_p,
-            apellido2: apellido_m || '',
-            correo: email,
-            contrasena: password,
-            genero: genero, 
-            id_rol: 3, // Rol predeterminado (ej. Paciente)
-            telefono: telefono,
-            fecha_nacimiento: null, // Puedes agregar un campo para fecha de nacimiento si lo deseas
-          }
-        ]);
+    if (dbError) throw dbError;
 
-      if (dbError) throw dbError;
+    // 3. Insertar en tabla 'pacientes' usando el ID del usuario recién creado
+    const { error: pacienteError } = await supabase
+      .from('pacientes')
+      .insert([{
+        id: newUser.id, // Relación uno a uno
+        fecha_nacimiento: fecha_nacimiento,
+        enfermedades: enfermedades || 'Ninguna'
+      }]);
 
-      Alert.alert("¡Bienvenido!", "Tu cuenta ha sido creada con éxito.");
-    } catch (error: any) {
-      Alert.alert("Error de registro", error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    if (pacienteError) throw pacienteError;
+
+    Alert.alert("¡Éxito!", "Cuenta de paciente creada correctamente.");
+    navigation.navigate('Login');
+
+  } catch (error: any) {
+    Alert.alert("Error de registro", error.message);
+  } finally {
+    setLoading(false);
+  }
+};
   
   return (
     <KeyboardAvoidingView 
@@ -145,6 +158,25 @@ export default function RegisterScreen({ navigation }: any) {
                 ]}>Femenino</Text>
               </TouchableOpacity>
             </View>
+
+              <Text style={styles.label}>Información Médica</Text>
+
+            <TextInput 
+              placeholder="Fecha de Nacimiento (AAAA-MM-DD)" 
+  style={styles.input} 
+  keyboardType="numbers-and-punctuation"
+  value={formData.fecha_nacimiento}
+  onChangeText={(text) => setFormData({...formData, fecha_nacimiento: text})}
+/>
+
+<TextInput 
+  placeholder="Enfermedades o Alergias (Opcional)" 
+  style={[styles.input, { height: 80, textAlignVertical: 'top' }]} // Altura mayor para notas
+  multiline={true}
+  numberOfLines={3}
+  value={formData.enfermedades}
+  onChangeText={(text) => setFormData({...formData, enfermedades: text})}
+/>
 
             <TextInput 
               placeholder="Correo electrónico" 
