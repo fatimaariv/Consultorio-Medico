@@ -13,7 +13,7 @@ import {
   ActivityIndicator, 
   ScrollView 
 } from 'react-native';
-import { supabase } from '../../supabase/supabase';
+import { supabase } from '../supabase/supabase';
 
 export default function RegisterScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
@@ -59,6 +59,7 @@ export default function RegisterScreen({ navigation }: any) {
             genero: genero, 
             id_rol: 3, // Rol predeterminado (ej. Paciente)
             telefono: telefono,
+            fecha_nacimiento: null, // Puedes agregar un campo para fecha de nacimiento si lo deseas
           }
         ]);
 
