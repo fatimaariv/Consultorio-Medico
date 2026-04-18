@@ -9,31 +9,51 @@ export default function VerifyCodeScreen({ route, navigation }: any) {
   const [loading, setLoading] = useState(false);
 
   const handleVerifyAndChange = async () => {
+    // 1. Validación de campos y longitud exacta
     if (!code || !newPassword) {
       Alert.alert("Atención", "Por favor ingresa el código y tu nueva contraseña.");
       return;
     }
 
+    if (newPassword.length !== 6) {
+      Alert.alert("Contraseña no válida", "La nueva contraseña debe tener exactamente 6 caracteres.");
+      return; 
+    }
+
     setLoading(true);
     try {
-      // 1. Verificamos el código (OTP)
+      // 2. Validar el código (OTP)
       const { error: verifyError } = await supabase.auth.verifyOtp({
         email,
         token: code,
         type: 'recovery',
       });
-
       if (verifyError) throw verifyError;
 
-      // 2. Si el código es correcto, actualizamos la contraseña
+      // 3. Actualizar la contraseña
       const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword
       });
-
       if (updateError) throw updateError;
 
-      Alert.alert("¡Éxito!", "Tu contraseña ha sido actualizada.");
-      navigation.navigate('Login');
+      // --- PASO CRÍTICO DE SEGURIDAD ---
+      // Cerramos la sesión que Supabase abre automáticamente. 
+      // Esto limpia el AuthContext y hace que 'session' sea null.
+      await supabase.auth.signOut();
+
+      // 4. Redirección garantizada al Login
+      Alert.alert("¡Éxito!", "Contraseña actualizada. Por favor, inicia sesión.", [
+        { 
+          text: "OK", 
+          onPress: () => {
+            // Usamos reset para limpiar el historial y asegurar que cargue el grupo de Login
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Login' }],
+            });
+          }
+        }
+      ]);
 
     } catch (error: any) {
       Alert.alert("Error", error.message);
@@ -41,7 +61,7 @@ export default function VerifyCodeScreen({ route, navigation }: any) {
       setLoading(false);
     }
   };
-
+  
   return (
     <View style={styles.container}>
       <Text style={styles.brand}>MediTrak</Text>

@@ -15,8 +15,12 @@ import {
 } from 'react-native';
 import { supabase } from '../supabase/supabase';
 
+import DateTimePicker from '@react-native-community/datetimepicker';
+
 export default function RegisterScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
+  const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);  
   const [formData, setFormData] = useState({
     nombre: '',
     apellido_p: '',
@@ -28,6 +32,27 @@ export default function RegisterScreen({ navigation }: any) {
     fecha_nacimiento: '', 
     enfermedades: ''
   });
+
+const onDateChange = (event: any, selectedDate?: Date) => {
+  // Si el usuario presiona "Aceptar", el event.type será 'set'
+  // Si el usuario presiona "Cancelar", el event.type será 'dismissed'
+  
+  if (event.type === 'set') {
+    setShowDatePicker(false); // Cerramos el calendario al confirmar
+    if (selectedDate) {
+      setDate(selectedDate);
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const formattedDate = `${year}-${month}-${day}`;
+      
+      setFormData({ ...formData, fecha_nacimiento: formattedDate });
+    }
+  } else {
+    // Si cancela (dismissed), simplemente cerramos sin guardar nada
+    setShowDatePicker(false);
+  }
+};
 
   const handleRegister = async () => {
   const { nombre, apellido_p, apellido_m, email, password, telefono, genero, fecha_nacimiento, enfermedades } = formData;
@@ -99,8 +124,7 @@ export default function RegisterScreen({ navigation }: any) {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled" 
         >
-          <Text style={styles.brand}>MediTrak</Text>
-          <Text style={styles.title}>Nueva Cuenta</Text>
+          <Text style={styles.title}>MediTrak</Text>
           
           <View style={styles.inputGroup}>
             <TextInput 
@@ -161,13 +185,28 @@ export default function RegisterScreen({ navigation }: any) {
 
               <Text style={styles.label}>Información Médica</Text>
 
-            <TextInput 
-              placeholder="Fecha de Nacimiento (AAAA-MM-DD)" 
+<TouchableOpacity 
   style={styles.input} 
-  keyboardType="numbers-and-punctuation"
-  value={formData.fecha_nacimiento}
-  onChangeText={(text) => setFormData({...formData, fecha_nacimiento: text})}
-/>
+  onPress={() => setShowDatePicker(true)}
+>
+  <Text style={{ 
+    color: formData.fecha_nacimiento ? '#333' : '#999', 
+    fontSize: 16 
+  }}>
+    {formData.fecha_nacimiento || "Fecha de Nacimiento"}
+  </Text>
+</TouchableOpacity>
+
+{showDatePicker && (
+  <DateTimePicker
+    value={date}
+    mode="date"
+    // 'calendar' fuerza la ventana con botones OK/Cancelar en Android
+    display={Platform.OS === 'android' ? 'calendar' : 'spinner'} 
+    maximumDate={new Date()}
+    onChange={onDateChange}
+  />
+)}
 
 <TextInput 
   placeholder="Enfermedades o Alergias (Opcional)" 
@@ -217,18 +256,19 @@ export default function RegisterScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: { flexGrow: 1, justifyContent: 'center', padding: 30, backgroundColor: '#F8F9FA' },
   brand: { fontSize: 22, textAlign: 'center', color: '#007AFF', fontWeight: 'bold', marginBottom: 10 },
-  title: { fontSize: 28, fontWeight: 'bold', marginBottom: 30, textAlign: 'center', color: '#333' },
+  title: { fontSize: 28, fontWeight: 'bold', marginBottom: 20, textAlign: 'center', color: '#182635' },
   inputGroup: { marginBottom: 10 },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
   input: { 
     backgroundColor: '#fff', 
     padding: 15, 
     borderRadius: 12, 
-    marginBottom: 15, 
+    marginBottom: 7, 
     borderWidth: 1, 
     borderColor: '#E1E1E1',
     fontSize: 16
   },
+  
   label: { fontSize: 16, color: '#333', marginBottom: 8, fontWeight: '600', marginLeft: 5 },
   genderContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   genderButton: {
