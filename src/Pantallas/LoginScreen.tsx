@@ -20,6 +20,7 @@ export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -53,20 +54,31 @@ export default function LoginScreen({ navigation }: any) {
           <Text style={styles.title}>Iniciar Sesión</Text>
           
           <View style={styles.inputGroup}>
-            <TextInput 
-              placeholder="Correo electrónico" 
-              style={styles.input} 
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address" // Mejora la experiencia para el email
-            />
-            <TextInput 
-              placeholder="Contraseña" 
-              style={styles.input} 
-              secureTextEntry 
-              onChangeText={setPassword}
-            />
-          </View>
+  <TextInput 
+    placeholder="Correo electrónico" 
+    style={styles.input} 
+    onChangeText={setEmail}
+    autoCapitalize="none"
+    keyboardType="email-address"
+  />
+
+  {/* Nuevo contenedor para la contraseña */}
+  <View style={styles.passwordContainer}>
+    <TextInput 
+      placeholder="Contraseña" 
+      style={[styles.input, { flex: 1, marginBottom: 0, borderWidth: 0 }]} // Quitamos borde y margen para que no se dupliquen
+      secureTextEntry={!showPassword} 
+      onChangeText={setPassword}
+      autoCapitalize="none"
+    />
+    <TouchableOpacity 
+      onPress={() => setShowPassword(!showPassword)} 
+      style={styles.eyeButton}
+    >
+      <Text style={styles.eyeText}>{showPassword ? "Ocultar" : "Ver"}</Text>
+    </TouchableOpacity>
+  </View>
+</View>
 
           <TouchableOpacity 
             style={styles.button} 
@@ -102,6 +114,19 @@ const styles = StyleSheet.create({
   brand: { fontSize: 22, textAlign: 'center', color: '#007AFF', fontWeight: 'bold', marginBottom: 10 },
   title: { fontSize: 28, fontWeight: 'bold', marginBottom: 40, textAlign: 'center', color: '#333' },
   inputGroup: { marginBottom: 20 },
+  
+  // 1. Nuevo contenedor para simular el input con el botón adentro
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E1E1E1',
+    marginBottom: 15,
+  },
+  
+  // 2. Modificamos el input para que no tenga borde propio ni márgenes
   input: { 
     backgroundColor: '#fff', 
     padding: 15, 
@@ -109,12 +134,33 @@ const styles = StyleSheet.create({
     marginBottom: 15, 
     borderWidth: 1, 
     borderColor: '#E1E1E1',
-    fontSize: 16
+    fontSize: 16,
+    color: '#333'
   },
-  button: { 
-    backgroundColor: '#007AFF', 
-    padding: 18, 
-    borderRadius: 12, 
+  
+  // 3. Estilo específico para el TextInput que va dentro del contenedor de password
+  inputPassword: {
+    flex: 1,
+    padding: 15,
+    fontSize: 16,
+    color: '#333',
+    // Sin bordes ni márgenes para que no se dupliquen con el contenedor
+  },
+
+  eyeButton: {
+    paddingHorizontal: 15,
+  },
+
+  eyeText: {
+    color: '#007AFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  button: {
+    backgroundColor: '#007AFF',
+    padding: 18,
+    borderRadius: 12,
     alignItems: 'center',
     elevation: 2,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1
