@@ -1,135 +1,180 @@
-import React, { useEffect, useState, useContext } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, SafeAreaView, ActivityIndicator } from 'react-native';
-import { AuthContext } from '../../context/AuthContext';
-import { supabase } from '../../supabase/supabase';
+import React from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  SafeAreaView, 
+  TouchableOpacity, 
+  StatusBar, 
+  ScrollView 
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function CitasProgramadas({ navigation }: any) {
-  const { session } = useContext(AuthContext);
-  const [loading, setLoading] = useState(true);
-  const [citas, setCitas] = useState<any[]>([]);
+export default function CitasProgramadas() {
+  const navigation = useNavigation<any>();
 
-  useEffect(() => {
-    fetchCitas();
-  }, []);
-
-  const fetchCitas = async () => {
-    try {
-      // 1. Obtener ID del doctor
-      if (!session?.user?.email) return;
-      
-      const { data: doctorData } = await supabase
-        .from('doctores')
-        .select('id')
-        .eq('correo', session.user.email)
-        .single();
-
-      if (doctorData) {
-        // 2. Traer citas futuras (pendientes)
-        const { data, error } = await supabase
-          .from('citas')
-          .select(`
-            id, fecha, hora, motivo, estado,
-            usuarios ( nombre, apellido )
-          `)
-          .eq('id_doctor', doctorData.id)
-          .neq('estado', 'completada') // Filtramos las que NO están completadas
-          .order('fecha', { ascending: true });
-
-        if (data) setCitas(data);
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
+  // Función para manejar la navegación a la pantalla de Consulta
+  const handlePressCita = () => {
+    navigation.navigate('Consulta'); 
   };
-
-  const renderCita = ({ item }: any) => (
-    <View style={[styles.card, styles.shadow]}>
-      <View style={styles.cardInfo}>
-        <Text style={styles.patientName}>
-          {item.usuarios?.nombre} {item.usuarios?.apellido}
-        </Text>
-        <Text style={styles.motivoText}>{item.motivo}</Text>
-        <View style={styles.dateTimeRow}>
-          <Ionicons name="calendar-outline" size={14} color="#64748b" />
-          <Text style={styles.dateTimeText}>{item.fecha}</Text>
-          <Ionicons name="time-outline" size={14} color="#64748b" style={{ marginLeft: 10 }} />
-          <Text style={styles.dateTimeText}>{item.hora}</Text>
-        </View>
-      </View>
-      <View style={styles.statusBadge}>
-        <Text style={styles.statusText}>{item.estado}</Text>
-      </View>
-    </View>
-  );
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      
+      {/* Encabezado */}
       <View style={styles.header}>
-        <Text style={styles.title}>Próximas Citas</Text>
-        <TouchableOpacity 
-          style={styles.historyBtn} 
-          onPress={() => navigation.navigate('HistorialDeCitas')}
-        >
-          <Ionicons name="time-outline" size={20} color="#2563eb" />
-          <Text style={styles.historyBtnText}>Ver Historial</Text>
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Citas Programadas</Text>
+        <Text style={styles.headerSubtitle}>Próximas revisiones médicas</Text>
       </View>
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#2563eb" style={{ marginTop: 50 }} />
-      ) : (
-        <FlatList
-          data={citas}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderCita}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>No tienes citas programadas.</Text>
-          }
-        />
-      )}
+      <ScrollView contentContainerStyle={styles.list}>
+        
+        {/* CITA ESTÁTICA (BOTÓN) */}
+        <TouchableOpacity 
+          style={[styles.card, styles.shadow]} 
+          onPress={handlePressCita}
+          activeOpacity={0.7}
+        >
+          <View style={styles.iconCircle}>
+            <Ionicons name="person" size={24} color="#3b82f6" />
+          </View>
+          
+          <View style={styles.infoContainer}>
+            <View style={styles.rowJustify}>
+              <Text style={styles.patientName}>Paciente de Prueba</Text>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>Hoy</Text>
+              </View>
+            </View>
+            
+            <Text style={styles.motivoText}>Motivo: Consulta General</Text>
+            
+            <View style={styles.dateTimeRow}>
+              <Ionicons name="calendar-outline" size={14} color="#64748b" />
+              <Text style={styles.dateTimeText}> 20/04/2026</Text>
+              <Ionicons name="time-outline" size={14} color="#64748b" style={{ marginLeft: 10 }} />
+              <Text style={styles.dateTimeText}> 10:00 AM</Text>
+            </View>
+          </View>
+
+          <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
+        </TouchableOpacity>
+
+        {/* Mensaje informativo */}
+        <View style={styles.infoBox}>
+          <Ionicons name="information-circle-outline" size={20} color="#64748b" />
+          <Text style={styles.infoBoxText}>
+            Esta es una cita estática. Al presionarla, serás redirigido a la pantalla de Consulta.
+          </Text>
+        </View>
+
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#F8FAFC' 
+  },
   header: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    padding: 20,
-    backgroundColor: '#fff'
+    padding: 20, 
+    backgroundColor: '#ffffff', 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#f1f5f9' 
   },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#1e293b' },
-  historyBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#eff6ff', padding: 8, borderRadius: 10 },
-  historyBtnText: { color: '#2563eb', fontWeight: '600', marginLeft: 5 },
-  listContent: { padding: 20 },
-  card: { 
-    backgroundColor: '#fff', 
-    borderRadius: 15, 
-    padding: 16, 
-    marginBottom: 15, 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center' 
+  headerTitle: { 
+    fontSize: 24, 
+    fontWeight: 'bold', 
+    color: '#1e293b' 
   },
-  cardInfo: { flex: 1 },
+  headerSubtitle: { 
+    fontSize: 14, 
+    color: '#64748b', 
+    marginTop: 2 
+  },
+  list: { 
+    padding: 16 
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   shadow: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  patientName: { fontSize: 16, fontWeight: 'bold', color: '#1e293b' },
-  motivoText: { color: '#64748b', fontSize: 14, marginVertical: 4 },
-  dateTimeRow: { flexDirection: 'row', alignItems: 'center', marginTop: 5 },
-  dateTimeText: { fontSize: 12, color: '#64748b', marginLeft: 4 },
-  statusBadge: { backgroundColor: '#f0fdf4', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  statusText: { color: '#16a34a', fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase' },
-  emptyText: { textAlign: 'center', marginTop: 50, color: '#94a3b8' }
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#eff6ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  infoContainer: { 
+    flex: 1 
+  },
+  rowJustify: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4
+  },
+  patientName: { 
+    fontSize: 16, 
+    fontWeight: 'bold', 
+    color: '#1e293b' 
+  },
+  badge: {
+    backgroundColor: '#dbeafe',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  badgeText: {
+    fontSize: 10,
+    color: '#2563eb',
+    fontWeight: 'bold',
+    textTransform: 'uppercase'
+  },
+  motivoText: { 
+    fontSize: 14, 
+    color: '#475569',
+    marginBottom: 6
+  },
+  dateTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dateTimeText: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+  infoBox: {
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  infoBoxText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#64748b',
+    lineHeight: 18
+  }
 });

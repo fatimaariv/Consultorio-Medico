@@ -9,17 +9,18 @@ import ScheduleScreen from '../Pantallas/Pantallas Paciente/ScheduleScreen';
 // Importación de pantallas
 import HomeScreen from '../Pantallas/Pantallas Paciente/HomeScreen';
 import LoginScreen from '../Pantallas/LoginScreen';
-import RegisterScreen from '../Pantallas/Pantallas Paciente/RegisterScreen';
+import RegisterScreen from '../Pantallas/RegisterScreen';
 import AdmiHome from '../Pantallas/Pantallas Admi/AdmiHome';
 import DoctorHome from '../Pantallas/Pantallas Doctor/DoctorHome'; 
 import PatientProfile from '../Pantallas/Pantallas Paciente/PatientProfile'; 
-import ForgotPasswordScreen from '../Pantallas/Pantallas Paciente/ForgotPasswordScreen';
+import ForgotPasswordScreen from '../Pantallas/ForgotPasswordScreen';
 import HistoryScreen from '../Pantallas/Pantallas Paciente/HistoryScreen';
-import VerifyCodeScreen from '../Pantallas/Pantallas Paciente/VerifyCodeScreen';
+import VerifyCodeScreen from '../Pantallas/VerifyCodeScreen';
 import Agenda from '../Pantallas/Pantallas Doctor/Agenda';
 import Pacientes from '../Pantallas/Pantallas Doctor/PerfilDoc';
 import CitasProgramadas from '../Pantallas/Pantallas Doctor/CitasProgramadas';
 import HistorialDeCitas from '../Pantallas/Pantallas Doctor/HistorialDeCitas';
+import Consulta from '../Pantallas/Pantallas Doctor/Consulta';
 
 const Stack = createNativeStackNavigator();
 
@@ -48,6 +49,7 @@ return (
             <Stack.Screen name="Pacientes" component={Pacientes} />
             <Stack.Screen name="CitasProgramadas" component={CitasProgramadas} />
             <Stack.Screen name="HistorialDeCitas" component={HistorialDeCitas} />
+            <Stack.Screen name="Consulta" component={Consulta} />
           </>
         )}
         
