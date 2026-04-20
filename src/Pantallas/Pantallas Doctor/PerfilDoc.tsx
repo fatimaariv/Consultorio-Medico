@@ -7,125 +7,121 @@ import {
   ScrollView, 
   TouchableOpacity, 
   ActivityIndicator,
-  Image
+  Alert
 } from 'react-native';
 import { AuthContext } from '../../context/AuthContext';
 import { supabase } from '../../supabase/supabase';
-import { Ionicons } from '@expo/vector-icons';
 
-export default function PerfilDoc() {
+export default function PerfilDoc({ navigation }: any) {
   const { session } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
   const [doctorInfo, setDoctorInfo] = useState<any>(null);
 
   useEffect(() => {
     fetchDoctorData();
-  }, []);
+  }, [session]);
 
   const fetchDoctorData = async () => {
-    try {
-      if (!session?.user?.email) {
-        setLoading(false);
-        return;
-      }
+  try {
+    setLoading(true);
+    
+    // 1. Obtenemos el ID del usuario de la sesión actual
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-      // 1. Buscamos en la tabla 'doctores' y unimos con 'usuarios' para nombre/apellido
-      const { data, error } = await supabase
-        .from('doctores')
-        .select(`
-          id,
-          especialidad,
-          telefono,
+    // 2. Ajustamos la consulta según tu diagrama exacto:
+    // La tabla es 'doctores', se relaciona con 'usuario'
+    const { data, error } = await supabase
+      .from('doctores')
+      .select(`
+        especialidad,
+        cedula,
+        hora_inicio,
+        hora_fin,
+        usuario!id_usuario (
+          nombre,
+          apellido1,
+          apellido2,
           correo,
-          usuarios (
-            nombre,
-            apellido
-          )
-        `)
-        .eq('correo', session.user.email)
-        .single();
+          telefono
+        )
+      `)
+      .eq('id_usuario', user.id) // Usamos el ID de auth para filtrar
+      .single();
 
-      if (data) setDoctorInfo(data);
-    } catch (error) {
-      console.error("Error al obtener perfil:", error);
-    } finally {
-      setLoading(false);
+    if (error) throw error;
+
+    if (data) {
+      // Manejamos si 'usuario' viene como objeto o array
+      const u = Array.isArray(data.usuario) ? data.usuario[0] : data.usuario;
+
+      setDoctorInfo({
+        nombreCompleto: u 
+          ? `Dr. ${u.nombre || ''} ${u.apellido_p || ''} ${u.apellido_m || ''}`.trim() 
+          : 'Nombre no disponible',
+        especialidad: data.especialidad,
+        correo: u?.correo || 'No disponible', // El correo viene de la tabla usuario
+        telefono: u?.telefono || 'No registrado', // El teléfono viene de usuario según tu diagrama
+        cedula: data.cedula,
+        horario: `${data.hora_inicio || ''} - ${data.hora_fin || ''}`
+      });
     }
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
+  } catch (error: any) {
+    console.error("Error al obtener perfil:", error.message);
+    Alert.alert("Error", `No se pudo cargar el perfil: ${error.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
 
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={{ marginTop: 10 }}>Cargando perfil profesional...</Text>
       </View>
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header con Diseño Curvo o Color Sólido */}
-        <View style={styles.headerBackground}>
-          <View style={styles.profileImageContainer}>
-            <View style={styles.imagePlaceholder}>
-              <Ionicons name="person" size={60} color="#2563eb" />
-            </View>
-          </View>
-        </View>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.content}>
+          <Text style={styles.logo}>MediTrak</Text>
+          <Text style={styles.title}>Perfil Profesional</Text>
 
-        <View style={styles.infoSection}>
-          <Text style={styles.userName}>
-            Dr. {doctorInfo?.usuarios?.nombre} {doctorInfo?.usuarios?.apellido}
-          </Text>
-          <Text style={styles.specialtyText}>{doctorInfo?.especialidad || 'Especialista'}</Text>
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Información Personal</Text>
+            
+            <Text style={styles.label}>Nombre del Médico</Text>
+            <Text style={styles.infoValue}>{doctorInfo?.nombreCompleto}</Text>
 
-          {/* Tarjetas de Información */}
-          <View style={styles.cardContainer}>
-            <View style={[styles.infoCard, styles.shadow]}>
-              <View style={styles.iconWrapper}>
-                <Ionicons name="mail-outline" size={20} color="#64748b" />
-              </View>
-              <View>
-                <Text style={styles.label}>Correo Electrónico</Text>
-                <Text style={styles.value}>{doctorInfo?.correo}</Text>
-              </View>
-            </View>
+            <Text style={styles.label}>Especialidad</Text>
+            <Text style={styles.infoValue}>{doctorInfo?.especialidad || 'Médico General'}</Text>
 
-            <View style={[styles.infoCard, styles.shadow]}>
-              <View style={styles.iconWrapper}>
-                <Ionicons name="call-outline" size={20} color="#64748b" />
-              </View>
-              <View>
-                <Text style={styles.label}>Teléfono de Contacto</Text>
-                <Text style={styles.value}>{doctorInfo?.telefono || 'No registrado'}</Text>
-              </View>
+            <Text style={styles.label}>Cédula Profesional</Text>
+            <Text style={styles.infoValue}>{doctorInfo?.cedula || 'En trámite'}</Text>
+
+            <View style={styles.divider} />
+
+            <Text style={styles.sectionTitle}>Contacto y Horarios</Text>
+
+            <Text style={styles.label}>Correo Electrónico</Text>
+            <Text style={styles.infoValue}>{doctorInfo?.correo}</Text>
+
+            <Text style={styles.label}>Teléfono de Contacto</Text>
+            <Text style={styles.infoValue}>{doctorInfo?.telefono || 'No registrado'}</Text>
+
+            <Text style={styles.label}>Horario de Atención</Text>
+            <View style={styles.textAreaDisplay}>
+              <Text style={styles.infoValue}>{doctorInfo?.horario}</Text>
             </View>
 
-            <View style={[styles.infoCard, styles.shadow]}>
-              <View style={styles.iconWrapper}>
-                <Ionicons name="medal-outline" size={20} color="#64748b" />
-              </View>
-              <View>
-                <Text style={styles.label}>Cédula Profesional</Text>
-                <Text style={styles.value}>Verificada</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Botones de Acción */}
-          <View style={styles.actionContainer}>
-            <TouchableOpacity style={styles.editButton}>
-              <Ionicons name="create-outline" size={20} color="white" />
-              <Text style={styles.editButtonText}>Editar Perfil</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-              <Ionicons name="log-out-outline" size={20} color="#ef4444" />
-              <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
+            <TouchableOpacity 
+              style={styles.logoutButton} 
+              onPress={async () => await supabase.auth.signOut()}
+            >
+              <Text style={styles.logoutText}>Cerrar Sesión</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -135,84 +131,45 @@ export default function PerfilDoc() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: '#F8F9FA' },
+  scrollContent: { paddingBottom: 50 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  headerBackground: {
-    height: 150,
-    backgroundColor: '#2563eb',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: 0,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+  content: { padding: 20 },
+  logo: { fontSize: 24, fontWeight: "bold", color: "#007AFF", textAlign: 'center', marginBottom: 5 },
+  title: { fontSize: 20, fontWeight: "600", color: "#333", marginBottom: 20, textAlign: 'center' },
+  card: { 
+    backgroundColor: "white", 
+    padding: 20, 
+    borderRadius: 16, 
+    elevation: 4, 
+    shadowColor: "#000", 
+    shadowOpacity: 0.1, 
+    shadowRadius: 10 
   },
-  profileImageContainer: {
-    marginBottom: -50,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 60,
-    padding: 5,
-  },
-  imagePlaceholder: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: '#DBEafe',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  infoSection: {
-    marginTop: 60,
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  userName: { fontSize: 24, fontWeight: 'bold', color: '#1e293b' },
-  specialtyText: { fontSize: 16, color: '#64748b', marginTop: 5, fontWeight: '500' },
-  cardContainer: { width: '100%', marginTop: 30 },
-  infoCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  shadow: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  iconWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: '#f1f5f9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  label: { fontSize: 12, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5 },
-  value: { fontSize: 15, color: '#334155', fontWeight: '600', marginTop: 2 },
-  actionContainer: { width: '100%', marginTop: 20, marginBottom: 40 },
-  editButton: {
-    backgroundColor: '#2563eb',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  editButtonText: { color: 'white', fontWeight: 'bold', marginLeft: 8, fontSize: 16 },
-  logoutButton: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#007AFF', marginBottom: 15 },
+  label: { fontSize: 13, color: "#7F8C8D", fontWeight: '600', textTransform: 'uppercase', marginBottom: 4 },
+  infoValue: { fontSize: 16, color: "#2C3E50", marginBottom: 15, fontWeight: '500' },
+  divider: { height: 1, backgroundColor: '#ECF0F1', marginVertical: 20 },
+  textAreaDisplay: {
+    backgroundColor: '#F9F9F9',
+    padding: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#fecaca',
+    borderColor: '#E1E1E1',
+    marginBottom: 20
   },
-  logoutButtonText: { color: '#ef4444', fontWeight: 'bold', marginLeft: 8, fontSize: 16 },
+  logoutButton: {
+    marginTop: 10,
+    padding: 15,
+    borderRadius: 12,
+    backgroundColor: '#FFF1F0',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FFA39E'
+  },
+  logoutText: {
+    color: '#F5222D',
+    fontWeight: 'bold',
+    fontSize: 16
+  }
 });
