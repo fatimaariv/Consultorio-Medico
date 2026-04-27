@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333'
   },
-  
+    
   // 3. Estilo específico para el TextInput que va dentro del contenedor de password
   inputPassword: {
     flex: 1,

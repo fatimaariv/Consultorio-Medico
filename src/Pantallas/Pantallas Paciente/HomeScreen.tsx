@@ -1,4 +1,4 @@
-import React, { useContext, useState, useCallback } from 'react'; // 1. Cambiamos useEffect por useCallback
+import React, { useContext, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,12 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
-  SafeAreaView
+  SafeAreaView,
+  StatusBar,
 } from 'react-native';
 import { AuthContext } from '../../context/AuthContext';
 import { supabase } from '../../supabase/supabase';
-import { useFocusEffect } from '@react-navigation/native'; // 2. Importamos useFocusEffect
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function HomeScreen({ navigation }: any) {
   const { session } = useContext(AuthContext);
@@ -18,11 +19,9 @@ export default function HomeScreen({ navigation }: any) {
   const [totalCitas, setTotalCitas] = useState(0);
   const [citasReales, setCitasReales] = useState<any[]>([]);
 
-  // 3. Sacamos la función de carga para poder usarla dentro del useFocusEffect
   const fetchUserDataAndCitas = async () => {
     if (session?.user?.email) {
       try {
-        // 1. Obtenemos datos del usuario logueado
         const { data: userData, error: userError } = await supabase
           .from('usuarios')
           .select('id, nombre')
@@ -32,14 +31,12 @@ export default function HomeScreen({ navigation }: any) {
         if (userData && !userError) {
           setUserName(userData.nombre);
 
-          // 2. Contador total de citas (Histórico)
           const { count } = await supabase
             .from('citas')
             .select('*', { count: 'exact', head: true })
             .eq('id_paciente', userData.id);
           setTotalCitas(count || 0);
 
-          // 3. OBTENER SOLO CITAS PRÓXIMAS (Fecha >= Hoy)
           const hoy = new Date().toISOString().split('T')[0];
 
           const { data: citasData, error: citasError } = await supabase
@@ -65,7 +62,7 @@ export default function HomeScreen({ navigation }: any) {
               id: c.id,
               fecha: c.fecha,
               hora: c.hora,
-              nombreDoctor: c.doctores?.usuarios 
+              nombreDoctor: c.doctores?.usuarios
                 ? `Dr. ${c.doctores.usuarios.nombre} ${c.doctores.usuarios.apellido1}`
                 : "Doctor no asignado"
             }));
@@ -78,7 +75,6 @@ export default function HomeScreen({ navigation }: any) {
     }
   };
 
-  // 4. CLAVE: useFocusEffect recarga los datos cada vez que la pantalla "se enfoca"
   useFocusEffect(
     useCallback(() => {
       fetchUserDataAndCitas();
@@ -93,70 +89,125 @@ export default function HomeScreen({ navigation }: any) {
     }
   };
 
+  // Saludo dinámico según la hora
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Buenos días';
+    if (hour < 18) return 'Buenas tardes';
+    return 'Buenas noches';
+  };
+
+  // Formatear fecha legible
+  const formatFecha = (fecha: string) => {
+    const [year, month, day] = fecha.split('-');
+    const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    return `${parseInt(day)} ${meses[parseInt(month) - 1]} ${year}`;
+  };
+
+  const proximaCita = citasReales.length > 0 ? citasReales[0] : null;
+
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <StatusBar barStyle="light-content" backgroundColor="#1a4fd6" />
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* HEADER */}
+        {/* ── HEADER con gradiente visual ── */}
         <View style={styles.header}>
-          <Text style={styles.logo}>Medi Track</Text>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.greeting}>Buenos días,</Text>
-            <Text style={styles.userName}>{userName}</Text>
-            <TouchableOpacity style={styles.logout} onPress={handleLogout}>
-              <Text style={styles.logoutText}>Cerrar sesión</Text>
+          <View style={styles.headerBubble1} />
+          <View style={styles.headerBubble2} />
+
+          <View style={styles.headerTop}>
+            <View>
+              <Text style={styles.logoText}>Medi Track</Text>
+              <Text style={styles.greetingText}>{getGreeting()},</Text>
+              <Text style={styles.userNameText}>{userName} 👋</Text>
+            </View>
+            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+              <Text style={styles.logoutText}>Salir</Text>
             </TouchableOpacity>
           </View>
-        </View>
 
-        <Text style={styles.title}>Tu agenda</Text>
-
-        {/* RESUMEN */}
-        <View style={styles.summaryContainer}>
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>Próxima cita</Text>
-            <Text style={styles.cardValue}>
-              {citasReales.length > 0 ? citasReales[0].hora : "--:--"}
-            </Text>
-          </View>
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>Total citas</Text>
-            <Text style={styles.cardValue}>{totalCitas}</Text>
-          </View>
-        </View>
-
-        {/* ACCIONES */}
-        <View style={styles.actions}>
-          <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('Schedule')}>
-            <Text style={styles.primaryBtnText}>+ Agendar Cita</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryBtn} onPress={() => navigation.navigate('History')}>
-            <Text style={styles.secondaryBtnText}>Ver Historial</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.subtitle}>Próximas Citas</Text>
-
-        {/* LISTA DE CITAS FUTURAS */}
-        {citasReales.length > 0 ? (
-          citasReales.map((cita) => (
-            <TouchableOpacity key={cita.id} style={styles.appointmentItem}>
+          {/* Tarjeta de próxima cita dentro del header */}
+          {proximaCita ? (
+            <View style={styles.nextAppointmentCard}>
               <View>
-                <Text style={styles.appointmentDoctor}>{cita.nombreDoctor}</Text>
-                <Text style={styles.appointmentDetail}>
-                  {cita.fecha} - {cita.hora}
+                <Text style={styles.nextAppointmentLabel}>Próxima cita</Text>
+                <Text style={styles.nextAppointmentDoctor}>{proximaCita.nombreDoctor}</Text>
+                <Text style={styles.nextAppointmentDate}>
+                  {formatFecha(proximaCita.fecha)} · {proximaCita.hora}
                 </Text>
               </View>
-              <Text style={styles.arrow}>›</Text>
+              <View style={styles.nextAppointmentBadge}>
+                <Text style={styles.nextAppointmentBadgeText}>📅</Text>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.nextAppointmentCard}>
+              <View>
+                <Text style={styles.nextAppointmentLabel}>Próxima cita</Text>
+                <Text style={styles.nextAppointmentDoctor}>Sin citas agendadas</Text>
+                <Text style={styles.nextAppointmentDate}>¡Agenda una ahora!</Text>
+              </View>
+              <View style={styles.nextAppointmentBadge}>
+                <Text style={styles.nextAppointmentBadgeText}>📋</Text>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* ── STATS ── */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{totalCitas}</Text>
+            <Text style={styles.statLabel}>Citas totales</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{citasReales.length}</Text>
+            <Text style={styles.statLabel}>Próximas</Text>
+          </View>
+        </View>
+
+        {/* ── ACCIONES ── */}
+        <View style={styles.actionsRow}>
+          <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('Schedule')}>
+            <Text style={styles.primaryBtnIcon}>＋</Text>
+            <Text style={styles.primaryBtnText}>Agendar Cita</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryBtn} onPress={() => navigation.navigate('History')}>
+            <Text style={styles.secondaryBtnIcon}>📋</Text>
+            <Text style={styles.secondaryBtnText}>Historial</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── LISTA DE PRÓXIMAS CITAS ── */}
+        <Text style={styles.sectionTitle}>Próximas Citas</Text>
+
+        {citasReales.length > 0 ? (
+          citasReales.map((cita, index) => (
+            <TouchableOpacity key={cita.id} style={styles.citaCard} activeOpacity={0.8}>
+              {/* Línea de color izquierda */}
+              <View style={[styles.citaAccent, index === 0 && styles.citaAccentFirst]} />
+              <View style={styles.citaInfo}>
+                <Text style={styles.citaDoctor}>{cita.nombreDoctor}</Text>
+                <Text style={styles.citaDetalle}>{formatFecha(cita.fecha)}</Text>
+              </View>
+              <View style={styles.citaHoraContainer}>
+                <Text style={styles.citaHora}>{cita.hora}</Text>
+                <Text style={styles.citaArrow}>›</Text>
+              </View>
             </TouchableOpacity>
           ))
         ) : (
-          <Text style={{ color: "#666", fontStyle: "italic" }}>No tienes citas próximamente.</Text>
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateIcon}>🗓️</Text>
+            <Text style={styles.emptyStateText}>No tienes citas próximamente</Text>
+          </View>
         )}
 
+        <View style={{ height: 30 }} />
       </ScrollView>
 
-      {/* NAVBAR */}
+      {/* ── NAVBAR (sin cambios) ── */}
       <View style={styles.bottomNav}>
         <TouchableOpacity onPress={() => navigation.navigate('Home')}>
           <Text style={styles.navText}>Inicio</Text>
@@ -169,151 +220,302 @@ export default function HomeScreen({ navigation }: any) {
   );
 }
 
+const BLUE = '#2563eb';
+const BLUE_DARK = '#1a4fd6';
+const BLUE_LIGHT = '#eff6ff';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f4f6f9",
+    backgroundColor: '#f0f4ff',
   },
   scrollContent: {
-    padding: 20,
-    paddingBottom: 100, // Espacio para que el navbar no tape el contenido
+    paddingBottom: 100,
   },
+
+  // ── HEADER ──
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
+    backgroundColor: BLUE_DARK,
+    paddingHorizontal: 22,
+    paddingTop: 18,
+    paddingBottom: 28,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    overflow: 'hidden',
     marginBottom: 20,
   },
-  logo: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#2563eb",
+  headerBubble1: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    top: -60,
+    right: -40,
   },
-  greeting: {
+  headerBubble2: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    bottom: 20,
+    left: -20,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  logoText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.6)',
+    fontWeight: '600',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  greetingText: {
     fontSize: 14,
-    color: "#666",
+    color: 'rgba(255,255,255,0.75)',
   },
-  userName: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#333",
+  userNameText: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginTop: 2,
   },
-  logout: {
-    backgroundColor: "#e74c3c",
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    marginTop: 5,
+  logoutBtn: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   logoutText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "600",
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
   },
-  title: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginVertical: 10,
-  },
-  summaryContainer: {
-    flexDirection: "row",
-    gap: 15,
-    marginVertical: 15,
-  },
-  card: {
-    flex: 1,
-    backgroundColor: "white",
-    padding: 15,
+
+  // Tarjeta próxima cita dentro del header
+  nextAppointmentCard: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
-    // Sombra para iOS
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    // Sombra para Android
+    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  nextAppointmentLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.65)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 4,
+  },
+  nextAppointmentDoctor: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  nextAppointmentDate: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.75)',
+    marginTop: 2,
+  },
+  nextAppointmentBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  nextAppointmentBadgeText: {
+    fontSize: 20,
+  },
+
+  // ── STATS ──
+  statsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 22,
+    gap: 12,
+    marginBottom: 18,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
     elevation: 3,
   },
-  cardLabel: {
+  statNumber: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: BLUE,
+  },
+  statLabel: {
     fontSize: 12,
-    color: "#666",
+    color: '#888',
+    marginTop: 2,
   },
-  cardValue: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginTop: 5,
-  },
-  actions: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 10,
+
+  // ── ACCIONES ──
+  actionsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 22,
+    gap: 12,
+    marginBottom: 26,
   },
   primaryBtn: {
     flex: 1,
-    backgroundColor: "#2563eb",
-    padding: 15,
-    borderRadius: 12,
-    alignItems: "center",
+    backgroundColor: BLUE,
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+    shadowColor: BLUE,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  primaryBtnIcon: {
+    fontSize: 18,
+    color: '#fff',
+    marginBottom: 2,
   },
   primaryBtnText: {
-    color: "white",
-    fontWeight: "bold",
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 13,
   },
   secondaryBtn: {
     flex: 1,
-    backgroundColor: "white",
-    borderWidth: 1,
-    borderColor: "#ccc",
-    padding: 15,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  secondaryBtnText: {
-    color: "#333",
-    fontWeight: "600",
-  },
-  subtitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginTop: 25,
-    marginBottom: 10,
-  },
-  appointmentItem: {
-    backgroundColor: "white",
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#dbe8ff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
     elevation: 2,
   },
-  appointmentDoctor: {
-    fontSize: 16,
-    fontWeight: "bold",
+  secondaryBtnIcon: {
+    fontSize: 18,
+    marginBottom: 2,
   },
-  appointmentDetail: {
-    color: "#666",
-    marginTop: 2,
+  secondaryBtnText: {
+    color: BLUE,
+    fontWeight: '600',
+    fontSize: 13,
   },
-  arrow: {
-    fontSize: 24,
-    color: "#ccc",
+
+  // ── SECCIÓN CITAS ──
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#1e293b',
+    paddingHorizontal: 22,
+    marginBottom: 12,
   },
+  citaCard: {
+    backgroundColor: '#fff',
+    marginHorizontal: 22,
+    marginBottom: 10,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  citaAccent: {
+    width: 4,
+    alignSelf: 'stretch',
+    backgroundColor: '#93c5fd',
+  },
+  citaAccentFirst: {
+    backgroundColor: BLUE,
+  },
+  citaInfo: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+  },
+  citaDoctor: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1e293b',
+  },
+  citaDetalle: {
+    fontSize: 13,
+    color: '#64748b',
+    marginTop: 3,
+  },
+  citaHoraContainer: {
+    paddingRight: 14,
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 4,
+  },
+  citaHora: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: BLUE,
+  },
+  citaArrow: {
+    fontSize: 22,
+    color: '#cbd5e1',
+    lineHeight: 26,
+  },
+
+  // ── EMPTY STATE ──
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 30,
+    paddingHorizontal: 22,
+  },
+  emptyStateIcon: {
+    fontSize: 36,
+    marginBottom: 8,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#94a3b8',
+    fontStyle: 'italic',
+  },
+
+  // ── NAVBAR (sin cambios) ──
   bottomNav: {
-    position: "absolute",
+    position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "white",
-    flexDirection: "row",
-    justifyContent: "space-around",
+    backgroundColor: 'white',
+    flexDirection: 'row',
+    justifyContent: 'space-around',
     paddingVertical: 20,
     borderTopWidth: 1,
-    borderTopColor: "#eee",
+    borderTopColor: '#eee',
   },
   navText: {
-    color: "#2563eb",
-    fontWeight: "600",
+    color: '#2563eb',
+    fontWeight: '600',
   },
 });
