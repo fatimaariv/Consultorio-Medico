@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-// Se agregaron los componentes faltantes en el import
 import { 
   View, 
   TextInput, 
@@ -21,6 +20,7 @@ export default function LoginScreen({ navigation }: any) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -39,51 +39,64 @@ export default function LoginScreen({ navigation }: any) {
 
   return (
     <KeyboardAvoidingView 
-      // Ajuste para que la vista suba cuando sale el teclado
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-      style={{ flex: 1, backgroundColor: '#F8F9FA' }}
+      style={{ flex: 1, backgroundColor: '#F0F4FF' }}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView 
-          // Hereda los estilos de tu contenedor para centrar el contenido
           contentContainerStyle={styles.container} 
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.brand}>Medi Track</Text>
-          <Text style={styles.title}>Iniciar Sesión</Text>
-          
-          <View style={styles.inputGroup}>
-  <TextInput 
-    placeholder="Correo electrónico" 
-    style={styles.input} 
-    onChangeText={setEmail}
-    autoCapitalize="none"
-    keyboardType="email-address"
-  />
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.appName}>MediTrak</Text>
+            <Text style={styles.subtitle}>Bienvenido de vuelta</Text>
+          </View>
 
-  {/* Nuevo contenedor para la contraseña */}
-  <View style={styles.passwordContainer}>
-    <TextInput 
-      placeholder="Contraseña" 
-      style={[styles.input, { flex: 1, marginBottom: 0, borderWidth: 0 }]} // Quitamos borde y margen para que no se dupliquen
-      secureTextEntry={!showPassword} 
-      onChangeText={setPassword}
-      autoCapitalize="none"
-    />
-    <TouchableOpacity 
-      onPress={() => setShowPassword(!showPassword)} 
-      style={styles.eyeButton}
-    >
-      <Text style={styles.eyeText}>{showPassword ? "Ocultar" : "Ver"}</Text>
-    </TouchableOpacity>
-  </View>
-</View>
+          {/* Card */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Iniciar sesión</Text>
+
+            <Text style={styles.fieldLabel}>Correo electrónico</Text>
+            <TextInput 
+              placeholder="correo@ejemplo.com"
+              placeholderTextColor="#B0BAC9"
+              style={[styles.input, focusedField === 'email' && styles.inputFocused]}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              onFocus={() => setFocusedField('email')}
+              onBlur={() => setFocusedField(null)}
+            />
+
+            <Text style={styles.fieldLabel}>Contraseña</Text>
+            <View style={[styles.passwordContainer, focusedField === 'password' && styles.inputFocused]}>
+              <TextInput 
+                placeholder="Tu contraseña"
+                placeholderTextColor="#B0BAC9"
+                style={styles.inputPassword}
+                secureTextEntry={!showPassword} 
+                onChangeText={setPassword}
+                autoCapitalize="none"
+                onFocus={() => setFocusedField('password')}
+                onBlur={() => setFocusedField(null)}
+              />
+              <TouchableOpacity 
+                onPress={() => setShowPassword(!showPassword)} 
+                style={styles.eyeButton}
+              >
+                <Text style={styles.eyeText}>{showPassword ? "Ocultar" : "Ver"}</Text>
+              </TouchableOpacity>
+            </View>
+
+          </View>
 
           <TouchableOpacity 
-            style={styles.button} 
+            style={[styles.button, loading && { opacity: 0.7 }]}
             onPress={handleLogin} 
             disabled={loading}
+            activeOpacity={0.85}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
@@ -92,17 +105,20 @@ export default function LoginScreen({ navigation }: any) {
             )}
           </TouchableOpacity>
 
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('ForgotPassword')}
+            style={styles.forgotLink}
+          >
+            <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+          </TouchableOpacity>
+
           <View style={styles.footer}>
+            <Text style={styles.footerText}>¿No tienes cuenta? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.link}>Crear cuenta</Text>
-            </TouchableOpacity>
-            
-            <Text style={styles.separator}>|</Text>
-            
-            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
-              <Text style={styles.link}>Olvidé mi contraseña</Text>
+              <Text style={styles.link}>Regístrate</Text>
             </TouchableOpacity>
           </View>
+
         </ScrollView>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -110,63 +126,74 @@ export default function LoginScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 30, backgroundColor: '#F8F9FA' },
-  brand: { fontSize: 22, textAlign: 'center', color: '#007AFF', fontWeight: 'bold', marginBottom: 10 },
-  title: { fontSize: 28, fontWeight: 'bold', marginBottom: 40, textAlign: 'center', color: '#333' },
-  inputGroup: { marginBottom: 20 },
-  
-  // 1. Nuevo contenedor para simular el input con el botón adentro
+  container: { flexGrow: 1, justifyContent: 'center', padding: 24, backgroundColor: '#F0F4FF' },
+
+  header: { alignItems: 'center', marginBottom: 32 },
+  appName: { fontSize: 32, fontWeight: '800', color: '#1A2540', letterSpacing: -0.5 },
+  subtitle: { fontSize: 14, color: '#6B7A99', marginTop: 4 },
+
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 22,
+    shadowColor: '#1A2540',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
+    marginBottom: 16,
+  },
+  cardTitle: { fontSize: 18, fontWeight: '700', color: '#1A2540', marginBottom: 20, textAlign: 'center' },
+
+  fieldLabel: { fontSize: 13, fontWeight: '600', color: '#4B5B7B', marginBottom: 6, marginLeft: 2 },
+
+  input: { 
+    backgroundColor: '#F7F9FF', 
+    padding: 14, 
+    borderRadius: 12, 
+    marginBottom: 14, 
+    borderWidth: 1.5, 
+    borderColor: '#E4EAF8',
+    fontSize: 15,
+    color: '#1A2540',
+  },
+  inputFocused: { borderColor: '#2563EB', backgroundColor: '#EEF3FF' },
+
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#F7F9FF',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E1E1E1',
-    marginBottom: 15,
+    borderWidth: 1.5,
+    borderColor: '#E4EAF8',
+    marginBottom: 4,
   },
-  
-  // 2. Modificamos el input para que no tenga borde propio ni márgenes
-  input: { 
-    backgroundColor: '#fff', 
-    padding: 15, 
-    borderRadius: 12, 
-    marginBottom: 15, 
-    borderWidth: 1, 
-    borderColor: '#E1E1E1',
-    fontSize: 16,
-    color: '#333'
-  },
-    
-  // 3. Estilo específico para el TextInput que va dentro del contenedor de password
   inputPassword: {
     flex: 1,
-    padding: 15,
-    fontSize: 16,
-    color: '#333',
-    // Sin bordes ni márgenes para que no se dupliquen con el contenedor
+    padding: 14,
+    fontSize: 15,
+    color: '#1A2540',
   },
+  eyeButton: { paddingHorizontal: 14 },
+  eyeText: { color: '#2563EB', fontSize: 13, fontWeight: '600' },
 
-  eyeButton: {
-    paddingHorizontal: 15,
-  },
+  forgotLink: { alignItems: 'center', marginTop: 14, marginBottom: 4 },
+  forgotText: { color: '#6B7A99', fontSize: 13, fontWeight: '600' },
 
-  eyeText: {
-    color: '#007AFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-
-  button: {
-    backgroundColor: '#007AFF',
-    padding: 18,
-    borderRadius: 12,
+  button: { 
+    backgroundColor: '#2563EB', 
+    padding: 17, 
+    borderRadius: 14, 
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  buttonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 25 },
-  link: { color: '#007AFF', fontSize: 14, fontWeight: '600' },
-  separator: { marginHorizontal: 15, color: '#CCC' }
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+
+  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 13 },
+  footerText: { color: '#6B7A99', fontSize: 13 },
+  link: { color: '#2563EB', fontSize: 13, fontWeight: '700' },
 });
