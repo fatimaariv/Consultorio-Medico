@@ -262,7 +262,7 @@ export default function DoctorHome({ navigation }: any) {
         <View style={styles.actionsRow}>
           <TouchableOpacity
             style={styles.primaryBtn}
-            onPress={() => navigation.navigate('CitasProgramadas')}
+            onPress={() => navigation.navigate('Agenda')}
             activeOpacity={0.85}
           >
             <Ionicons name="calendar-outline" size={20} color="#fff" />
