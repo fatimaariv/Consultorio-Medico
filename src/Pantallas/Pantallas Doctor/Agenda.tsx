@@ -188,6 +188,7 @@ export default function Agenda({ navigation }: any) {
       case 'confirmada': return { bg: '#dcfce7', text: '#16a34a' };
       case 'pendiente':  return { bg: '#fef9c3', text: '#ca8a04' };
       case 'cancelada':  return { bg: '#fee2e2', text: '#dc2626' };
+      case 'terminada':   return { bg: '#d1fae5', text: '#059669' };
       default:           return { bg: '#f1f5f9', text: '#64748b' };
     }
   };
@@ -332,14 +333,16 @@ export default function Agenda({ navigation }: any) {
                     <Text style={styles.citaMotivo} numberOfLines={2}>{cita.motivo}</Text>
                   </View>
 
-                  {/* Botón cancelar */}
-                  <TouchableOpacity
-                    style={styles.cancelBtn}
-                    onPress={() => handleCancelarCita(cita)}
-                    activeOpacity={0.75}
-                  >
-                    <Text style={styles.cancelBtnText}>✕  Cancelar cita</Text>
-                  </TouchableOpacity>
+                  {/* Botón cancelar — solo si la cita no está terminada */}
+                  {cita.estado !== 'terminada' && (
+                    <TouchableOpacity
+                      style={styles.cancelBtn}
+                      onPress={() => handleCancelarCita(cita)}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={styles.cancelBtnText}>✕  Cancelar cita</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
             );
