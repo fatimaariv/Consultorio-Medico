@@ -215,16 +215,27 @@ export default function DoctorHome({ navigation }: any) {
 
           {/* Próxima cita del día */}
           {proximaCita ? (
-            <View style={styles.nextCard}>
+            <TouchableOpacity
+              style={styles.nextCard}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('Consulta', {
+                citaId: proximaCita.id,
+                nombrePaciente: proximaCita.nombrePaciente,
+                motivo: proximaCita.motivo,
+                hora: proximaCita.hora,
+                estado: proximaCita.estado,
+                idDoctor: doctorInfo.id,
+              })}
+            >
               <View style={{ flex: 1 }}>
-                <Text style={styles.nextLabel}>Primera cita del día</Text>
+                <Text style={styles.nextLabel}>Primera cita del día · Toca para consultar</Text>
                 <Text style={styles.nextPatient}>{proximaCita.nombrePaciente}</Text>
                 <Text style={styles.nextDetail}>{proximaCita.hora} hrs · {proximaCita.motivo}</Text>
               </View>
               <View style={styles.nextBadge}>
                 <Text style={styles.nextBadgeText}>🩺</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ) : (
             <View style={styles.nextCard}>
               <View style={{ flex: 1 }}>
@@ -283,7 +294,19 @@ export default function DoctorHome({ navigation }: any) {
 
         {proximasCitas.length > 0 ? (
           proximasCitas.map((cita, index) => (
-            <View key={cita.id} style={styles.citaCard}>
+            <TouchableOpacity
+              key={cita.id}
+              style={styles.citaCard}
+              activeOpacity={0.75}
+              onPress={() => navigation.navigate('Consulta', {
+                citaId: cita.id,
+                nombrePaciente: cita.nombrePaciente,
+                motivo: cita.motivo,
+                hora: cita.hora,
+                estado: cita.estado,
+                idDoctor: doctorInfo.id,
+              })}
+            >
               <View style={[styles.citaAccent, index === 0 && styles.citaAccentFirst]} />
               <View style={styles.citaInfo}>
                 <Text style={styles.citaPatient}>{cita.nombrePaciente}</Text>
@@ -298,8 +321,9 @@ export default function DoctorHome({ navigation }: any) {
                 ]}>
                   <Text style={styles.estadoText}>{cita.estado}</Text>
                 </View>
+                <Ionicons name="chevron-forward" size={14} color="#94a3b8" />
               </View>
-            </View>
+            </TouchableOpacity>
           ))
         ) : (
           <View style={styles.emptyState}>

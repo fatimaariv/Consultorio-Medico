@@ -18,7 +18,6 @@ import HistoryScreen from '../Pantallas/Pantallas Paciente/HistoryScreen';
 import VerifyCodeScreen from '../Pantallas/VerifyCodeScreen';
 import Agenda from '../Pantallas/Pantallas Doctor/Agenda';
 import Pacientes from '../Pantallas/Pantallas Doctor/PerfilDoc';
-import CitasProgramadas from '../Pantallas/Pantallas Doctor/CitasProgramadas';
 import HistorialDeCitas from '../Pantallas/Pantallas Doctor/HistorialDeCitas';
 import Consulta from '../Pantallas/Pantallas Doctor/Consulta';
 
@@ -52,7 +51,6 @@ return (
             <Stack.Screen name="DoctorHome" component={DoctorHome} />
             <Stack.Screen name="Agenda" component={Agenda} />
             <Stack.Screen name="Pacientes" component={Pacientes} />
-            <Stack.Screen name="CitasProgramadas" component={CitasProgramadas} />
             <Stack.Screen name="HistorialDeCitas" component={HistorialDeCitas} />
             <Stack.Screen name="Consulta" component={Consulta} />
           </>
