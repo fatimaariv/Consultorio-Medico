@@ -89,6 +89,42 @@ export default function HomeScreen({ navigation }: any) {
     }
   };
 
+  const handleCancelarCita = (cita: any) => {
+    Alert.alert(
+      "Cancelar cita",
+      `¿Estás segura de que deseas cancelar la cita con ${cita.nombreDoctor} el ${formatFecha(cita.fecha)} a las ${cita.hora}?`,
+      [
+        {
+          text: "No, mantener",
+          style: "cancel",
+        },
+        {
+          text: "Sí, cancelar",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const { error } = await supabase
+                .from('citas')
+                .delete()
+                .eq('id', cita.id);
+
+              if (error) {
+                Alert.alert("Error", "No se pudo cancelar la cita. Intenta de nuevo.");
+              } else {
+                Alert.alert("Cita cancelada", "Tu cita ha sido cancelada exitosamente.");
+                // Actualizar la lista quitando la cita cancelada
+                setCitasReales(prev => prev.filter(c => c.id !== cita.id));
+                setTotalCitas(prev => Math.max(0, prev - 1));
+              }
+            } catch (error) {
+              Alert.alert("Error", "Ocurrió un error inesperado.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   // Saludo dinámico según la hora
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -184,7 +220,7 @@ export default function HomeScreen({ navigation }: any) {
 
         {citasReales.length > 0 ? (
           citasReales.map((cita, index) => (
-            <TouchableOpacity key={cita.id} style={styles.citaCard} activeOpacity={0.8}>
+            <View key={cita.id} style={styles.citaCard}>
               {/* Línea de color izquierda */}
               <View style={[styles.citaAccent, index === 0 && styles.citaAccentFirst]} />
               <View style={styles.citaInfo}>
@@ -193,9 +229,16 @@ export default function HomeScreen({ navigation }: any) {
               </View>
               <View style={styles.citaHoraContainer}>
                 <Text style={styles.citaHora}>{cita.hora}</Text>
-                <Text style={styles.citaArrow}>›</Text>
               </View>
-            </TouchableOpacity>
+              {/* Botón cancelar */}
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => handleCancelarCita(cita)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.cancelBtnText}>✕</Text>
+              </TouchableOpacity>
+            </View>
           ))
         ) : (
           <View style={styles.emptyState}>
@@ -469,20 +512,30 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   citaHoraContainer: {
-    paddingRight: 14,
+    paddingRight: 8,
     alignItems: 'center',
-    flexDirection: 'row',
-    gap: 4,
   },
   citaHora: {
     fontSize: 14,
     fontWeight: '700',
     color: BLUE,
   },
-  citaArrow: {
-    fontSize: 22,
-    color: '#cbd5e1',
-    lineHeight: 26,
+
+  // ── BOTÓN CANCELAR ──
+  cancelBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#fee2e2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    marginLeft: 6,
+  },
+  cancelBtnText: {
+    color: '#ef4444',
+    fontSize: 13,
+    fontWeight: 'bold',
   },
 
   // ── EMPTY STATE ──

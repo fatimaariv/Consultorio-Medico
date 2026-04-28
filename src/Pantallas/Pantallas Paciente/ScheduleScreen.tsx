@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   Alert, ScrollView, KeyboardAvoidingView, Platform,
-  ActivityIndicator, StatusBar, Animated
+  ActivityIndicator, StatusBar,
 } from 'react-native';
 import { supabase } from '../../supabase/supabase';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -16,6 +16,31 @@ type Doctor = {
   especialidad: string;
   hora_inicio: string;
   hora_fin: string;
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Convierte "HH:MM" o "HH:MM:SS" a minutos desde medianoche */
+const timeToMinutes = (t: string): number => {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+};
+
+/**
+ * Genera slots de 30 min entre hora_inicio y hora_fin del doctor.
+ * Devuelve strings "HH:MM".
+ */
+const generateSlots = (hora_inicio: string, hora_fin: string): string[] => {
+  const slots: string[] = [];
+  let current = timeToMinutes(hora_inicio);
+  const end = timeToMinutes(hora_fin);
+  while (current < end) {
+    const h = Math.floor(current / 60).toString().padStart(2, '0');
+    const m = (current % 60).toString().padStart(2, '0');
+    slots.push(`${h}:${m}`);
+    current += 30;
+  }
+  return slots;
 };
 
 // ─── Componente principal ─────────────────────────────────────────────────────
@@ -34,25 +59,20 @@ export default function ScheduleScreen({ navigation }: any) {
     motivo: '',
   });
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
   const [date, setDate] = useState(new Date());
 
-  // ── Handlers de fecha / hora ─────────────────────────────────────────────
+  // Slots generados y ocupados
+  const [allSlots, setAllSlots] = useState<string[]>([]);
+  const [occupiedSlots, setOccupiedSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+
+  // ── Handlers de fecha ────────────────────────────────────────────────────
   const onDateChange = (_: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate) {
       setDate(selectedDate);
       const formattedDate = selectedDate.toISOString().split('T')[0];
-      setFormData(prev => ({ ...prev, fecha: formattedDate }));
-    }
-  };
-
-  const onTimeChange = (_: any, selectedTime?: Date) => {
-    setShowTimePicker(false);
-    if (selectedTime) {
-      const hours = selectedTime.getHours().toString().padStart(2, '0');
-      const minutes = selectedTime.getMinutes().toString().padStart(2, '0');
-      setFormData(prev => ({ ...prev, hora: `${hours}:${minutes}` }));
+      setFormData(prev => ({ ...prev, fecha: formattedDate, hora: '' }));
     }
   };
 
@@ -64,8 +84,6 @@ export default function ScheduleScreen({ navigation }: any) {
   const fetchDoctores = async () => {
     try {
       setLoading(true);
-
-      // ✅ FIX: join correcto — doctores.id === usuarios.id (no cedula)
       const { data, error } = await supabase
         .from('doctores')
         .select(`
@@ -105,6 +123,45 @@ export default function ScheduleScreen({ navigation }: any) {
     }
   };
 
+  // ── Recalcular slots cuando cambia doctor o fecha ────────────────────────
+  useEffect(() => {
+    if (selectedDoctor && formData.fecha) {
+      fetchOccupiedSlots(selectedDoctor, formData.fecha);
+    } else {
+      setAllSlots([]);
+      setOccupiedSlots([]);
+    }
+    // Limpiar hora seleccionada cuando cambia doctor o fecha
+    setFormData(prev => ({ ...prev, hora: '' }));
+  }, [selectedDoctor, formData.fecha]);
+
+  const fetchOccupiedSlots = async (doctor: Doctor, fecha: string) => {
+    try {
+      setLoadingSlots(true);
+
+      // Generar todos los slots del horario del doctor
+      const slots = generateSlots(doctor.hora_inicio, doctor.hora_fin);
+      setAllSlots(slots);
+
+      // Consultar citas ya existentes para ese doctor y fecha
+      const { data, error } = await supabase
+        .from('citas')
+        .select('hora')
+        .eq('id_doctor', Number(doctor.id))
+        .eq('fecha', fecha);
+
+      if (error) throw error;
+
+      // Normalizar a "HH:MM" (la BD puede devolver "HH:MM:SS")
+      const ocupadas = (data || []).map((c: any) => c.hora.slice(0, 5));
+      setOccupiedSlots(ocupadas);
+    } catch (error: any) {
+      Alert.alert('Error', 'No se pudo verificar disponibilidad: ' + error.message);
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
+
   // ── Seleccionar doctor ────────────────────────────────────────────────────
   const handleSelectDoctor = (doc: Doctor) => {
     setSelectedDoctor(doc);
@@ -112,6 +169,7 @@ export default function ScheduleScreen({ navigation }: any) {
       ...prev,
       id_doctor: doc.id,
       especialidad: doc.especialidad,
+      hora: '',
     }));
     setDropdownOpen(false);
   };
@@ -139,6 +197,23 @@ export default function ScheduleScreen({ navigation }: any) {
         .single();
 
       if (userError || !userData) throw new Error('No se pudo identificar tu usuario.');
+
+      // Doble-check: verificar que el slot siga libre justo antes de insertar
+      const { data: conflicto } = await supabase
+        .from('citas')
+        .select('id')
+        .eq('id_doctor', Number(formData.id_doctor))
+        .eq('fecha', formData.fecha)
+        .eq('hora', formData.hora)
+        .maybeSingle();
+
+      if (conflicto) {
+        Alert.alert('Horario no disponible', 'Ese horario acaba de ser tomado. Por favor elige otro.');
+        // Recargar slots
+        if (selectedDoctor) fetchOccupiedSlots(selectedDoctor, formData.fecha);
+        setFormData(prev => ({ ...prev, hora: '' }));
+        return;
+      }
 
       const { error } = await supabase.from('citas').insert([{
         id_doctor: Number(formData.id_doctor),
@@ -249,7 +324,7 @@ export default function ScheduleScreen({ navigation }: any) {
                     <Text style={styles.dropdownItemSpec}>{doc.especialidad}</Text>
                   </View>
                   <Text style={styles.dropdownItemHours}>
-                    {doc.hora_inicio}–{doc.hora_fin}
+                    {doc.hora_inicio.slice(0, 5)}–{doc.hora_fin.slice(0, 5)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -266,42 +341,26 @@ export default function ScheduleScreen({ navigation }: any) {
           </View>
         ) : null}
 
-        {/* ── Fecha y Hora ── */}
+        {/* ── Fecha ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Fecha y Hora</Text>
-          <View style={styles.row}>
-            <TouchableOpacity
-              style={[styles.dateTimeBtn, formData.fecha && styles.dateTimeBtnFilled]}
-              onPress={() => setShowDatePicker(true)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.dateTimeIcon}>📅</Text>
-              <View>
-                <Text style={styles.dateTimeLabelSmall}>Fecha</Text>
-                <Text style={formData.fecha ? styles.dateTimeValue : styles.dateTimePlaceholder}>
-                  {formData.fecha
-                    ? new Date(formData.fecha + 'T12:00:00').toLocaleDateString('es-MX', {
-                        day: '2-digit', month: 'short', year: 'numeric',
-                      })
-                    : 'Seleccionar'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.dateTimeBtn, formData.hora && styles.dateTimeBtnFilled]}
-              onPress={() => setShowTimePicker(true)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.dateTimeIcon}>🕐</Text>
-              <View>
-                <Text style={styles.dateTimeLabelSmall}>Hora</Text>
-                <Text style={formData.hora ? styles.dateTimeValue : styles.dateTimePlaceholder}>
-                  {formData.hora || 'Seleccionar'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.sectionTitle}>Fecha</Text>
+          <TouchableOpacity
+            style={[styles.dateTimeBtn, formData.fecha && styles.dateTimeBtnFilled]}
+            onPress={() => setShowDatePicker(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.dateTimeIcon}>📅</Text>
+            <View>
+              <Text style={styles.dateTimeLabelSmall}>Fecha</Text>
+              <Text style={formData.fecha ? styles.dateTimeValue : styles.dateTimePlaceholder}>
+                {formData.fecha
+                  ? new Date(formData.fecha + 'T12:00:00').toLocaleDateString('es-MX', {
+                      day: '2-digit', month: 'short', year: 'numeric',
+                    })
+                  : 'Seleccionar'}
+              </Text>
+            </View>
+          </TouchableOpacity>
         </View>
 
         {showDatePicker && (
@@ -313,15 +372,81 @@ export default function ScheduleScreen({ navigation }: any) {
             minimumDate={new Date()}
           />
         )}
-        {showTimePicker && (
-          <DateTimePicker
-            value={date}
-            mode="time"
-            display="default"
-            is24Hour={true}
-            onChange={onTimeChange}
-          />
-        )}
+
+        {/* ── Slots de hora ── */}
+        {selectedDoctor && formData.fecha ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Hora disponible</Text>
+
+            {loadingSlots ? (
+              <View style={styles.slotsLoading}>
+                <ActivityIndicator size="small" color="#2563eb" />
+                <Text style={styles.slotsLoadingText}>Verificando disponibilidad...</Text>
+              </View>
+            ) : allSlots.length === 0 ? (
+              <Text style={styles.slotsEmpty}>No hay horarios configurados para este médico.</Text>
+            ) : (
+              <>
+                <View style={styles.slotsGrid}>
+                  {allSlots.map((slot) => {
+                    const occupied = occupiedSlots.includes(slot);
+                    const selected = formData.hora === slot;
+                    return (
+                      <TouchableOpacity
+                        key={slot}
+                        style={[
+                          styles.slotBtn,
+                          selected && styles.slotBtnSelected,
+                          occupied && styles.slotBtnOccupied,
+                        ]}
+                        onPress={() => {
+                          if (!occupied) setFormData(prev => ({ ...prev, hora: slot }));
+                        }}
+                        activeOpacity={occupied ? 1 : 0.75}
+                        disabled={occupied}
+                      >
+                        <Text
+                          style={[
+                            styles.slotText,
+                            selected && styles.slotTextSelected,
+                            occupied && styles.slotTextOccupied,
+                          ]}
+                        >
+                          {slot}
+                        </Text>
+                        {occupied && <Text style={styles.slotOccupiedLabel}>Ocupado</Text>}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Leyenda */}
+                <View style={styles.slotsLegend}>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: '#2563eb' }]} />
+                    <Text style={styles.legendText}>Seleccionado</Text>
+                  </View>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: '#e5e7eb' }]} />
+                    <Text style={styles.legendText}>Disponible</Text>
+                  </View>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: '#fecaca' }]} />
+                    <Text style={styles.legendText}>Ocupado</Text>
+                  </View>
+                </View>
+              </>
+            )}
+          </View>
+        ) : selectedDoctor && !formData.fecha ? (
+          <View style={styles.slotsHint}>
+            <Text style={styles.slotsHintText}>📅 Selecciona una fecha para ver los horarios disponibles</Text>
+          </View>
+        ) : !selectedDoctor && formData.fecha ? (
+          <View style={styles.slotsHint}>
+            <Text style={styles.slotsHintText}>👨‍⚕️ Selecciona un médico para ver los horarios disponibles</Text>
+          </View>
+        ) : null}
 
         {/* ── Motivo ── */}
         <View style={styles.section}>
@@ -506,8 +631,7 @@ const styles = StyleSheet.create({
   },
   specialtyBadgeText: { color: BLUE, fontWeight: '600', fontSize: 13 },
 
-  // Date/Time
-  row: { flexDirection: 'row', gap: 12 },
+  // Date button
   dateTimeBtn: {
     flex: 1, backgroundColor: 'white',
     borderWidth: 1.5, borderColor: '#e5e7eb',
@@ -520,6 +644,81 @@ const styles = StyleSheet.create({
   dateTimeLabelSmall: { fontSize: 11, color: '#9ca3af', fontWeight: '600', textTransform: 'uppercase' },
   dateTimePlaceholder: { fontSize: 14, color: '#9ca3af', marginTop: 2 },
   dateTimeValue: { fontSize: 14, color: '#1f2937', fontWeight: '600', marginTop: 2 },
+
+  // ── Slots grid ──
+  slotsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  slotBtn: {
+    width: '22%',
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#e5e7eb',
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  slotBtnSelected: {
+    backgroundColor: BLUE,
+    borderColor: BLUE,
+    shadowColor: BLUE,
+    shadowOpacity: 0.3,
+    elevation: 4,
+  },
+  slotBtnOccupied: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+    opacity: 0.7,
+  },
+  slotText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  slotTextSelected: { color: 'white' },
+  slotTextOccupied: { color: '#f87171', fontSize: 12 },
+  slotOccupiedLabel: {
+    fontSize: 9,
+    color: '#f87171',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+
+  // Slots loading / empty / hint
+  slotsLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 16,
+  },
+  slotsLoadingText: { color: '#6b7280', fontSize: 14 },
+  slotsEmpty: { color: '#9ca3af', fontSize: 14, fontStyle: 'italic' },
+  slotsHint: {
+    backgroundColor: BLUE_LIGHT,
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: BLUE_BORDER,
+  },
+  slotsHintText: { color: '#1e40af', fontSize: 13, fontWeight: '500' },
+
+  // Leyenda
+  slotsLegend: {
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 12,
+  },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 10, height: 10, borderRadius: 5 },
+  legendText: { fontSize: 12, color: '#6b7280' },
 
   // TextArea
   textArea: {
