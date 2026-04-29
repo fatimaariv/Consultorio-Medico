@@ -185,7 +185,7 @@ export default function AdmiHome({ navigation }: any) {
           iconColor={BLUE}
           title="Gestionar Doctores"
           subtitle="Dar de alta o editar especialistas"
-          onPress={() => {}}
+          onPress={() => navigation.navigate('GestionarDoctores')}
         />
         <ActionCard
           icon="business-outline"

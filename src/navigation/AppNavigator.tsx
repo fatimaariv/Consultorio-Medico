@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthContext } from '../context/AuthContext';
 import ScheduleScreen from '../Pantallas/Pantallas Paciente/ScheduleScreen';
 import GestionarConsultorios from '../Pantallas/Pantallas Admi/GestionarConsultorios/index';
+import GestionarDoctores from '../Pantallas/Pantallas Admi/GestiónDoctores/GestionarDoctores';
 
 // Importación de pantallas
 import HomeScreen from '../Pantallas/Pantallas Paciente/HomeScreen';
@@ -43,6 +44,7 @@ return (
   <>
     <Stack.Screen name="AdmiHome" component={AdmiHome} />
     <Stack.Screen name="GestionarConsultorios" component={GestionarConsultorios} />
+    <Stack.Screen name="GestionarDoctores" component={GestionarDoctores} />
   </>
 )}
         
