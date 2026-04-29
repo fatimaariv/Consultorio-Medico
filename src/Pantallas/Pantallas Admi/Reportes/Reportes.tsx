@@ -35,10 +35,10 @@ const TIPO_CONFIG: Record<string, {
   bg: string;
   label: string;
 }> = {
-  cita:        { icon: 'calendar-outline',  color: '#ea580c', bg: '#fff7ed',  label: 'Cita' },
-  consultorio: { icon: 'business-outline',  color: '#7c3aed', bg: '#ede9fe',  label: 'Consultorio' },
-  doctor:      { icon: 'medical-outline',   color: '#2563eb', bg: '#dbeafe',  label: 'Doctor' },
-  paciente:    { icon: 'person-outline',    color: '#db2777', bg: '#fce7f3',  label: 'Paciente' },
+  cita:        { icon: 'calendar-outline', color: '#ea580c', bg: '#fff7ed', label: 'Cita' },
+  consultorio: { icon: 'business-outline', color: '#7c3aed', bg: '#ede9fe', label: 'Consultorio' },
+  doctor:      { icon: 'medical-outline',  color: '#2563eb', bg: '#dbeafe', label: 'Doctor' },
+  paciente:    { icon: 'person-outline',   color: '#db2777', bg: '#fce7f3', label: 'Paciente' },
 };
 
 const FILTROS: { key: Filtro; label: string }[] = [
@@ -73,10 +73,7 @@ export default function Reportes({ navigation }: any) {
   const [filtro, setFiltro]         = useState<Filtro>('todos');
 
   const [totales, setTotales] = useState({
-    citas: 0,
-    consultorios: 0,
-    doctores: 0,
-    pacientes: 0,
+    citas: 0, consultorios: 0, doctores: 0, pacientes: 0,
   });
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
@@ -86,40 +83,46 @@ export default function Reportes({ navigation }: any) {
 
     try {
       const [resCitas, resConsultorios, resDoctores, resPacientes] = await Promise.all([
+
+        // ✅ CITAS: join a pacientes y doctores, luego a usuarios
+        // La FK en citas es id_paciente → pacientes.id e id_doctor → doctores.id
         supabase
           .from('citas')
           .select(`
             id, fecha, hora, estado, motivo, fecha_creacion,
-            pacientes:id_paciente (
-              usuarios:id ( nombre, apellido1 )
+            pacientes!citas_id_paciente_fkey (
+              usuarios ( nombre, apellido1 )
             ),
-            doctores:id_doctor (
-              usuarios:id ( nombre, apellido1 )
+            doctores!citas_id_doctor_fkey (
+              usuarios ( nombre, apellido1 )
             )
           `)
           .order('fecha_creacion', { ascending: false })
           .limit(30),
 
+        // ✅ CONSULTORIOS: columnas reales = id, numero, estado
         supabase
           .from('consultorios')
           .select('id, numero, estado')
           .order('id', { ascending: false })
           .limit(20),
 
+        // ✅ DOCTORES: FK doctores.id → usuarios.id (isOneToOne: true)
         supabase
           .from('doctores')
           .select(`
-            id, especialidad, cedula,
-            usuarios:id ( nombre, apellido1 )
+            id, especialidad, cedula, hora_inicio, hora_fin,
+            usuarios ( nombre, apellido1 )
           `)
           .order('id', { ascending: false })
           .limit(20),
 
+        // ✅ PACIENTES: FK pacientes.id → usuarios.id (isOneToOne: true)
         supabase
           .from('pacientes')
           .select(`
             id, fecha_nacimiento, enfermedades,
-            usuarios:id ( nombre, apellido1 )
+            usuarios ( nombre, apellido1 )
           `)
           .order('id', { ascending: false })
           .limit(20),
@@ -141,7 +144,7 @@ export default function Reportes({ navigation }: any) {
           entradas.push({
             id:           `cita-${c.id}`,
             tipo:         'cita',
-            titulo:       `Cita registrada — ${pacNombre}`,
+            titulo:       `Cita — ${pacNombre}`,
             detalle:      `${docNombre} · ${formatFecha(c.fecha)} a las ${formatHora(c.hora)} · Estado: ${c.estado}`,
             fecha:        c.fecha_creacion,
             fechaDisplay: formatFecha(c.fecha_creacion),
@@ -157,8 +160,8 @@ export default function Reportes({ navigation }: any) {
             id:           `consultorio-${c.id}`,
             tipo:         'consultorio',
             titulo:       `Consultorio #${c.numero}`,
-            detalle:      `Estado actual: ${c.estado}`,
-            fecha:        `2000-01-01T00:00:0${c.id}`,
+            detalle:      `Estado: ${c.estado}`,
+            fecha:        `2000-01-01T00:00:00.00${c.id}Z`,
             fechaDisplay: `ID #${c.id}`,
           });
         });
@@ -168,15 +171,17 @@ export default function Reportes({ navigation }: any) {
       if (resDoctores.data) {
         setTotales(t => ({ ...t, doctores: resDoctores.data!.length }));
         resDoctores.data.forEach((d: any) => {
-          const nombre = d.usuarios
-            ? `Dr. ${d.usuarios.nombre} ${d.usuarios.apellido1}`
+          // usuarios viene como objeto único porque la relación es isOneToOne
+          const u = d.usuarios;
+          const nombre = u
+            ? `Dr. ${u.nombre} ${u.apellido1}`
             : `Doctor ID #${d.id}`;
           entradas.push({
             id:           `doctor-${d.id}`,
             tipo:         'doctor',
             titulo:       nombre,
-            detalle:      `Especialidad: ${d.especialidad} · Cédula: ${d.cedula}`,
-            fecha:        `2000-01-01T00:00:0${d.id}`,
+            detalle:      `Especialidad: ${d.especialidad} · Cédula: ${d.cedula} · Horario: ${formatHora(d.hora_inicio)} - ${formatHora(d.hora_fin)}`,
+            fecha:        `2000-01-01T00:00:00.00${d.id}Z`,
             fechaDisplay: `ID #${d.id}`,
           });
         });
@@ -186,15 +191,17 @@ export default function Reportes({ navigation }: any) {
       if (resPacientes.data) {
         setTotales(t => ({ ...t, pacientes: resPacientes.data!.length }));
         resPacientes.data.forEach((p: any) => {
-          const nombre = p.usuarios
-            ? `${p.usuarios.nombre} ${p.usuarios.apellido1}`
+          // usuarios viene como objeto único porque la relación es isOneToOne
+          const u = p.usuarios;
+          const nombre = u
+            ? `${u.nombre} ${u.apellido1}`
             : `Paciente ID #${p.id}`;
           entradas.push({
             id:           `paciente-${p.id}`,
             tipo:         'paciente',
             titulo:       nombre,
             detalle:      `Fecha de nacimiento: ${formatFecha(p.fecha_nacimiento)}${p.enfermedades ? ` · ${p.enfermedades}` : ''}`,
-            fecha:        `2000-01-01T00:00:0${p.id}`,
+            fecha:        `2000-01-01T00:00:00.00${p.id}Z`,
             fechaDisplay: `ID #${p.id}`,
           });
         });
@@ -213,12 +220,10 @@ export default function Reportes({ navigation }: any) {
 
   useFocusEffect(useCallback(() => { fetchData(); }, []));
 
-  // ── Filtrado ───────────────────────────────────────────────────────────────
   const reportesFiltrados = filtro === 'todos'
     ? reportes
     : reportes.filter(r => r.tipo === filtro);
 
-  // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <View style={styles.center}>
@@ -228,7 +233,6 @@ export default function Reportes({ navigation }: any) {
     );
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={BLUE_DARK} />
@@ -265,7 +269,6 @@ export default function Reportes({ navigation }: any) {
             </View>
           </View>
 
-          {/* Mini stats en el header */}
           <View style={styles.headerStatsRow}>
             <View style={styles.headerStat}>
               <Text style={styles.headerStatNum}>{totales.citas}</Text>
@@ -385,7 +388,6 @@ const styles = StyleSheet.create({
   loadingText:   { marginTop: 12, color: '#6b7280', fontSize: 15 },
   scrollContent: { paddingBottom: 20 },
 
-  // ── Header ──
   header: {
     backgroundColor: BLUE_DARK,
     paddingHorizontal: 22,
@@ -404,21 +406,12 @@ const styles = StyleSheet.create({
     position: 'absolute', width: 100, height: 100, borderRadius: 50,
     backgroundColor: 'rgba(255,255,255,0.05)', bottom: 10, left: -20,
   },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 20,
-  },
+  headerTop: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 20 },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 36, height: 36, borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center', alignItems: 'center',
+    marginTop: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
   },
   logoText: {
     fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '600',
@@ -426,7 +419,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 21, fontWeight: 'bold', color: '#fff', marginBottom: 2 },
   headerSub:   { fontSize: 13, color: 'rgba(255,255,255,0.65)' },
-
   headerStatsRow: {
     backgroundColor: 'rgba(255,255,255,0.13)',
     borderRadius: 16, padding: 16,
@@ -438,74 +430,45 @@ const styles = StyleSheet.create({
   headerStatLabel:   { fontSize: 11, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
   headerStatDivider: { width: 1, height: 28, backgroundColor: 'rgba(255,255,255,0.2)' },
 
-  // ── Filtros ──
   filtrosContainer: {
-    paddingHorizontal: 22,
-    paddingBottom: 4,
-    gap: 8,
-    flexDirection: 'row',
-    marginBottom: 12,
+    paddingHorizontal: 22, paddingBottom: 4,
+    gap: 8, flexDirection: 'row', marginBottom: 12,
   },
   filtroBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#fff',
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 14, paddingVertical: 7,
+    borderRadius: 20, borderWidth: 1.5,
+    borderColor: '#e2e8f0', backgroundColor: '#fff',
   },
-  filtroText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#64748b',
-  },
+  filtroText: { fontSize: 13, fontWeight: '600', color: '#64748b' },
 
-  // ── Conteo ──
   conteoRow:  { paddingHorizontal: 22, marginBottom: 10 },
   conteoText: { fontSize: 13, color: '#94a3b8', fontWeight: '600' },
 
-  // ── Tarjeta reporte ──
   reporteCard: {
     backgroundColor: '#fff',
-    marginHorizontal: 22,
-    marginBottom: 10,
-    borderRadius: 16,
-    flexDirection: 'row',
-    overflow: 'hidden',
+    marginHorizontal: 22, marginBottom: 10,
+    borderRadius: 16, flexDirection: 'row', overflow: 'hidden',
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 6,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06, shadowRadius: 6,
       },
       android: { elevation: 3 },
     }),
   },
-  cardAccent:  { width: 4 },
+  cardAccent: { width: 4 },
   cardBody: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    gap: 12,
+    flex: 1, flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12,
   },
   cardIconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexShrink: 0,
+    width: 42, height: 42, borderRadius: 12,
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
   cardInfo: { flex: 1 },
   cardTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', marginBottom: 4,
   },
   tipoBadge:     { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
   tipoBadgeText: { fontSize: 11, fontWeight: '700' },
@@ -513,13 +476,11 @@ const styles = StyleSheet.create({
   cardTitulo:    { fontSize: 14, fontWeight: '700', color: '#0f172a', marginBottom: 3 },
   cardDetalle:   { fontSize: 12, color: '#64748b', lineHeight: 17 },
 
-  // ── Empty ──
   emptyState: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 22 },
   emptyIcon: {
     width: 72, height: 72, borderRadius: 20,
     backgroundColor: '#f8fafc',
-    justifyContent: 'center', alignItems: 'center',
-    marginBottom: 12,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 12,
   },
   emptyTitle: { fontSize: 16, fontWeight: '700', color: '#334155', marginBottom: 4 },
   emptyText:  { fontSize: 13, color: '#94a3b8', textAlign: 'center' },

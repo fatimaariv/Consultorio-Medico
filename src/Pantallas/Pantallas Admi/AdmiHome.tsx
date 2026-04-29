@@ -208,15 +208,15 @@ export default function AdmiHome({ navigation }: any) {
           iconBg="#ede9fe"
           iconColor="#7c3aed"
           title="Consultorios"
-          subtitle="Administrar sedes y salas"
+          subtitle="Administrar"
           onPress={() => navigation.navigate('GestionarConsultorios')}
         />
         <ActionCard
           icon="bar-chart-outline"
           iconBg="#d1fae5"
           iconColor="#059669"
-          title="Reportes Cambios"
-          subtitle="Ver analíticas de rendimiento"
+          title="Reportes "
+          subtitle="Listado de datos"
           onPress={() => navigation.navigate('Reportes')}
         />
 
