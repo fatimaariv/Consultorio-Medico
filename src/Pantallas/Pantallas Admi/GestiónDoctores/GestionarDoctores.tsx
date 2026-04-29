@@ -19,35 +19,29 @@ import {
   doctoresAdminService,
   DoctorConUsuario,
   DoctorFormData,
-  UsuarioPaciente,
 } from '../../../services/Doctoresadminservice';
 import FormularioDoctor from './Formulariodoctor';
- 
-// ─── Constantes (igual que AdmiHome) ─────────────────────────────────────────
+
+// ─── Constantes ───────────────────────────────────────────────────────────────
 const BLUE      = '#2563eb';
 const BLUE_DARK = '#1a4fd6';
- 
+
 // ─── Componente ───────────────────────────────────────────────────────────────
 export default function GestionarDoctores({ navigation }: any) {
-  const [doctores,      setDoctores]      = useState<DoctorConUsuario[]>([]);
-  const [pacientes,     setPacientes]     = useState<UsuarioPaciente[]>([]);
-  const [loading,       setLoading]       = useState(true);
-  const [refrescando,   setRefrescando]   = useState(false);
-  const [busqueda,      setBusqueda]      = useState('');
-  const [modalVisible,  setModalVisible]  = useState(false);
-  const [doctorEditar,  setDoctorEditar]  = useState<DoctorConUsuario | null>(null);
- 
-  // ── Fetch ─────────────────────────────────────────────────────────────────
+  const [doctores,     setDoctores]     = useState<DoctorConUsuario[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [refrescando,  setRefrescando]  = useState(false);
+  const [busqueda,     setBusqueda]     = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [doctorEditar, setDoctorEditar] = useState<DoctorConUsuario | null>(null);
+
+  // ── Fetch ────────────────────────────────────────────────────────────────
   const fetchData = async (esRefresco = false) => {
     if (esRefresco) setRefrescando(true);
     else setLoading(true);
     try {
-      const [docs, pacs] = await Promise.all([
-        doctoresAdminService.obtenerDoctores(),
-        doctoresAdminService.obtenerPacientes(),
-      ]);
+      const docs = await doctoresAdminService.obtenerDoctores();
       setDoctores(docs);
-      setPacientes(pacs);
     } catch (e: any) {
       Alert.alert('Error', e.message || 'No se pudieron cargar los datos.');
     } finally {
@@ -55,21 +49,20 @@ export default function GestionarDoctores({ navigation }: any) {
       setRefrescando(false);
     }
   };
- 
+
   useFocusEffect(useCallback(() => { fetchData(); }, []));
- 
+
   // ── Filtro búsqueda ───────────────────────────────────────────────────────
   const doctoresFiltrados = doctores.filter((d) => {
     const t = busqueda.toLowerCase();
-    const nombre = `${d.usuario.nombre} ${d.usuario.apellido1} ${d.usuario.apellido2}`.toLowerCase();
+    const nombre = `${d.usuario.nombre} ${d.usuario.apellido1} ${d.usuario.apellido2 ?? ''}`.toLowerCase();
     return nombre.includes(t) || d.especialidad.toLowerCase().includes(t) || d.cedula.toLowerCase().includes(t);
   });
- 
+
   // ── Acciones ──────────────────────────────────────────────────────────────
-  const handleCrear = () => { setDoctorEditar(null); setModalVisible(true); };
- 
-  const handleEditar = (doctor: DoctorConUsuario) => { setDoctorEditar(doctor); setModalVisible(true); };
- 
+  const handleCrear   = () => { setDoctorEditar(null); setModalVisible(true); };
+  const handleEditar  = (doctor: DoctorConUsuario) => { setDoctorEditar(doctor); setModalVisible(true); };
+
   const handleGuardar = async (data: DoctorFormData) => {
     if (doctorEditar) {
       await doctoresAdminService.actualizarDoctor(doctorEditar.id, data);
@@ -78,7 +71,7 @@ export default function GestionarDoctores({ navigation }: any) {
     }
     await fetchData();
   };
- 
+
   const handleEliminar = (doctor: DoctorConUsuario) => {
     const nombre = `${doctor.usuario.nombre} ${doctor.usuario.apellido1}`;
     Alert.alert(
@@ -100,7 +93,7 @@ export default function GestionarDoctores({ navigation }: any) {
       ]
     );
   };
- 
+
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -110,17 +103,15 @@ export default function GestionarDoctores({ navigation }: any) {
       </View>
     );
   }
- 
+
   // ── Render tarjeta doctor ─────────────────────────────────────────────────
   const renderDoctor = ({ item, index }: { item: DoctorConUsuario; index: number }) => {
     const iniciales = `${item.usuario.nombre[0] ?? ''}${item.usuario.apellido1[0] ?? ''}`.toUpperCase();
     const hora = `${item.hora_inicio.slice(0, 5)} – ${item.hora_fin.slice(0, 5)}`;
- 
+
     return (
       <View style={[styles.doctorCard, index === 0 && styles.doctorCardFirst]}>
-        {/* Acento lateral (igual que citaAccent en AdmiHome) */}
         <View style={[styles.cardAccent, index === 0 && styles.cardAccentFirst]} />
- 
         <View style={styles.cardBody}>
           {/* Fila superior */}
           <View style={styles.cardTopRow}>
@@ -143,8 +134,8 @@ export default function GestionarDoctores({ navigation }: any) {
               </TouchableOpacity>
             </View>
           </View>
- 
-          {/* Badges info */}
+
+          {/* Badges */}
           <View style={styles.badgesRow}>
             <View style={[styles.badge, { backgroundColor: '#dbeafe' }]}>
               <Ionicons name="medical" size={11} color={BLUE} />
@@ -163,17 +154,16 @@ export default function GestionarDoctores({ navigation }: any) {
       </View>
     );
   };
- 
+
   // ── Render principal ──────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={BLUE_DARK} />
- 
-      {/* ── HEADER (igual al de AdmiHome) ── */}
+
+      {/* ── HEADER ── */}
       <View style={styles.header}>
         <View style={styles.headerBubble1} />
         <View style={styles.headerBubble2} />
- 
         <View style={styles.headerTop}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={18} color="#fff" />
@@ -190,17 +180,12 @@ export default function GestionarDoctores({ navigation }: any) {
             <Text style={styles.btnAgregarTexto}>Agregar</Text>
           </TouchableOpacity>
         </View>
- 
-        {/* Mini stat en header */}
+
+        {/* Mini stats */}
         <View style={styles.headerStatsRow}>
           <View style={styles.headerStat}>
             <Text style={styles.headerStatNum}>{doctores.length}</Text>
             <Text style={styles.headerStatLabel}>Doctores</Text>
-          </View>
-          <View style={styles.headerStatDivider} />
-          <View style={styles.headerStat}>
-            <Text style={styles.headerStatNum}>{pacientes.length}</Text>
-            <Text style={styles.headerStatLabel}>Pacientes disponibles</Text>
           </View>
           <View style={styles.headerStatDivider} />
           <View style={styles.headerStat}>
@@ -209,9 +194,19 @@ export default function GestionarDoctores({ navigation }: any) {
             </Text>
             <Text style={styles.headerStatLabel}>Especialidades</Text>
           </View>
+          <View style={styles.headerStatDivider} />
+          <View style={styles.headerStat}>
+            <Text style={styles.headerStatNum}>
+              {doctores.filter(d => {
+                const [h] = d.hora_inicio.split(':').map(Number);
+                return h < 12;
+              }).length}
+            </Text>
+            <Text style={styles.headerStatLabel}>Turno matutino</Text>
+          </View>
         </View>
       </View>
- 
+
       {/* ── BUSCADOR ── */}
       <View style={styles.buscadorWrap}>
         <Ionicons name="search-outline" size={16} color="#94a3b8" style={{ marginRight: 8 }} />
@@ -228,7 +223,7 @@ export default function GestionarDoctores({ navigation }: any) {
           </TouchableOpacity>
         )}
       </View>
- 
+
       {/* ── LISTA ── */}
       {doctoresFiltrados.length === 0 ? (
         <View style={styles.emptyState}>
@@ -260,26 +255,25 @@ export default function GestionarDoctores({ navigation }: any) {
           }
         />
       )}
- 
+
       {/* ── MODAL ── */}
       <FormularioDoctor
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
         onGuardar={handleGuardar}
         doctorEditar={doctorEditar}
-        pacientes={pacientes}
       />
     </SafeAreaView>
   );
 }
- 
+
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container:   { flex: 1, backgroundColor: '#f0f4ff' },
   center:      { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f4ff' },
   loadingText: { marginTop: 12, color: '#6b7280', fontSize: 15 },
- 
-  // ── Header (copia fiel de AdmiHome) ──
+
+  // ── Header ──
   header: {
     backgroundColor: BLUE_DARK,
     paddingHorizontal: 22,
@@ -313,8 +307,8 @@ const styles = StyleSheet.create({
     fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '600',
     letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4,
   },
-  headerTitulo:   { fontSize: 21, fontWeight: 'bold', color: '#fff' },
-  headerSubtitulo:{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 2, fontStyle: 'italic' },
+  headerTitulo:    { fontSize: 21, fontWeight: 'bold', color: '#fff' },
+  headerSubtitulo: { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 2, fontStyle: 'italic' },
   btnAgregar: {
     backgroundColor: 'rgba(255,255,255,0.15)',
     paddingVertical: 8, paddingHorizontal: 12,
@@ -334,7 +328,7 @@ const styles = StyleSheet.create({
   headerStatNum:     { fontSize: 22, fontWeight: 'bold', color: '#fff' },
   headerStatLabel:   { fontSize: 11, color: 'rgba(255,255,255,0.65)', marginTop: 2, textAlign: 'center' },
   headerStatDivider: { width: 1, height: 30, backgroundColor: 'rgba(255,255,255,0.2)' },
- 
+
   // ── Buscador ──
   buscadorWrap: {
     flexDirection: 'row', alignItems: 'center',
@@ -344,24 +338,21 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
   buscador: { flex: 1, fontSize: 14, color: '#1e293b' },
- 
+
   // ── Lista ──
   lista: { paddingHorizontal: 22, paddingBottom: 28 },
- 
-  // ── Tarjeta doctor (copia patrón citaCard de AdmiHome) ──
+
+  // ── Tarjeta doctor ──
   doctorCard: {
     backgroundColor: '#fff', marginBottom: 10,
     borderRadius: 16, flexDirection: 'row', overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
   },
-  doctorCardFirst: {
-    shadowColor: BLUE, shadowOpacity: 0.1,
-  },
+  doctorCardFirst: { shadowColor: BLUE, shadowOpacity: 0.1 },
   cardAccent:      { width: 5, backgroundColor: '#cbd5e1' },
   cardAccentFirst: { backgroundColor: BLUE },
   cardBody:        { flex: 1, padding: 14 },
- 
   cardTopRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10,
   },
@@ -370,10 +361,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#dbeafe',
     alignItems: 'center', justifyContent: 'center',
   },
-  avatarText:    { fontSize: 14, fontWeight: '700', color: BLUE },
-  doctorNombre:  { fontSize: 14, fontWeight: '700', color: '#1e293b' },
-  doctorCorreo:  { fontSize: 12, color: '#64748b', marginTop: 1 },
- 
+  avatarText:   { fontSize: 14, fontWeight: '700', color: BLUE },
+  doctorNombre: { fontSize: 14, fontWeight: '700', color: '#1e293b' },
+  doctorCorreo: { fontSize: 12, color: '#64748b', marginTop: 1 },
   accionesWrap: { flexDirection: 'row', gap: 6 },
   btnEditar: {
     width: 32, height: 32, borderRadius: 10,
@@ -385,20 +375,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#fef2f2',
     alignItems: 'center', justifyContent: 'center',
   },
- 
   badgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   badge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20,
   },
   badgeText: { fontSize: 11, fontWeight: '600' },
- 
-  // ── Empty state (igual que AdmiHome) ──
+
+  // ── Empty state ──
   emptyState: {
-    alignItems: 'center', paddingVertical: 48,
-    paddingHorizontal: 22,
+    alignItems: 'center', paddingVertical: 48, paddingHorizontal: 22,
   },
-  emptyText: { fontSize: 14, color: '#94a3b8', textAlign: 'center', marginTop: 12, marginBottom: 20 },
+  emptyText: {
+    fontSize: 14, color: '#94a3b8', textAlign: 'center', marginTop: 12, marginBottom: 20,
+  },
   btnAgregarEmpty: {
     backgroundColor: BLUE, flexDirection: 'row',
     alignItems: 'center', gap: 8,
