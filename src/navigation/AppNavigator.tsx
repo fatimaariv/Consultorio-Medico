@@ -21,6 +21,9 @@ import Agenda from '../Pantallas/Pantallas Doctor/Agenda';
 import Pacientes from '../Pantallas/Pantallas Doctor/PerfilDoc';
 import HistorialDeCitas from '../Pantallas/Pantallas Doctor/HistorialDeCitas';
 import Consulta from '../Pantallas/Pantallas Doctor/Consulta';
+import Reportes from '../Pantallas/Pantallas Admi/Reportes/Reportes';
+import GestionarUsuarios from '../Pantallas/Pantallas Admi/GestionarUsuarios/GestionarUsuarios';
+import GestionarCitas from '../Pantallas/Pantallas Admi/GestionarCitas/GestionarCitas';
 
 const Stack = createNativeStackNavigator();
 
@@ -45,6 +48,9 @@ return (
     <Stack.Screen name="AdmiHome" component={AdmiHome} />
     <Stack.Screen name="GestionarConsultorios" component={GestionarConsultorios} />
     <Stack.Screen name="GestionarDoctores" component={GestionarDoctores} />
+    <Stack.Screen name="Reportes" component={Reportes} />
+    <Stack.Screen name="GestionarUsuarios" component={GestionarUsuarios} />
+    <Stack.Screen name="GestionarCitas" component={GestionarCitas} />
   </>
 )}
         

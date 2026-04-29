@@ -188,6 +188,22 @@ export default function AdmiHome({ navigation }: any) {
           onPress={() => navigation.navigate('GestionarDoctores')}
         />
         <ActionCard
+          icon="people-outline"
+          iconBg="#fce7f3"
+          iconColor="#db2777"
+          title="Gestionar Usuarios"
+          subtitle="Administrar pacientes y cuentas"
+          onPress={() => navigation.navigate('GestionarUsuarios')}
+        />
+        <ActionCard
+          icon="calendar-outline"
+          iconBg="#fff7ed"
+          iconColor="#ea580c"
+          title="Gestionar Citas"
+          subtitle="Ver, editar y cancelar citas"
+          onPress={() => navigation.navigate('GestionarCitas')}
+        />
+        <ActionCard
           icon="business-outline"
           iconBg="#ede9fe"
           iconColor="#7c3aed"
@@ -199,9 +215,9 @@ export default function AdmiHome({ navigation }: any) {
           icon="bar-chart-outline"
           iconBg="#d1fae5"
           iconColor="#059669"
-          title="Reportes Mensuales"
+          title="Reportes Cambios"
           subtitle="Ver analíticas de rendimiento"
-          onPress={() => {}}
+          onPress={() => navigation.navigate('Reportes')}
         />
 
         <View style={{ height: 30 }} />
