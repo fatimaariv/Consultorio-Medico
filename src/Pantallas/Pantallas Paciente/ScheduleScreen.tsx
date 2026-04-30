@@ -66,12 +66,19 @@ export default function ScheduleScreen({ navigation }: any) {
   const [occupiedSlots, setOccupiedSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
+  // Consultorio asignado (preview en resumen y usado al insertar)
+  const [consultorioAsignado, setConsultorioAsignado] = useState<{ id: number; numero: string } | null>(null);
+
   // ── Handlers de fecha ────────────────────────────────────────────────────
   const onDateChange = (_: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate) {
       setDate(selectedDate);
-      const formattedDate = selectedDate.toISOString().split('T')[0];
+      // Usar partes locales para evitar que toISOString() desfase la fecha por UTC
+      const yyyy = selectedDate.getFullYear();
+      const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(selectedDate.getDate()).padStart(2, '0');
+      const formattedDate = `${yyyy}-${mm}-${dd}`;
       setFormData(prev => ({ ...prev, fecha: formattedDate, hora: '' }));
     }
   };
@@ -131,8 +138,9 @@ export default function ScheduleScreen({ navigation }: any) {
       setAllSlots([]);
       setOccupiedSlots([]);
     }
-    // Limpiar hora seleccionada cuando cambia doctor o fecha
+    // Limpiar hora seleccionada y consultorio cuando cambia doctor o fecha
     setFormData(prev => ({ ...prev, hora: '' }));
+    setConsultorioAsignado(null);
   }, [selectedDoctor, formData.fecha]);
 
   const fetchOccupiedSlots = async (doctor: Doctor, fecha: string) => {
@@ -174,6 +182,52 @@ export default function ScheduleScreen({ navigation }: any) {
     setDropdownOpen(false);
   };
 
+  // ── Asignar consultorio disponible ───────────────────────────────────────
+  /**
+   * Consulta la tabla `citas` para saber qué consultorios ya están ocupados
+   * en la fecha+hora exacta solicitada. De los consultorios con estado
+   * 'disponible' que NO aparezcan ocupados en ese slot, elige uno al azar.
+   * Si la cita anterior fue a las 09:00 y la nueva es a las 10:00, el
+   * consultorio de las 09:00 ya está libre y puede reasignarse.
+   */
+  const asignarConsultorio = async (
+    fecha: string,
+    hora: string,
+  ): Promise<{ id: number; numero: string } | null> => {
+    try {
+      // 1. Obtener todos los consultorios disponibles
+      const { data: consultorios, error: errC } = await supabase
+        .from('consultorios')
+        .select('id, numero')
+        .eq('estado', 'disponible');
+
+      if (errC || !consultorios || consultorios.length === 0) return null;
+
+      // 2. Ver qué consultorios tienen cita en ese slot exacto (misma fecha y hora)
+      const { data: citasSlot, error: errCitas } = await supabase
+        .from('citas')
+        .select('id_consultorio')
+        .eq('fecha', fecha)
+        .eq('hora', hora)
+        .not('id_consultorio', 'is', null);
+
+      if (errCitas) return null;
+
+      const ocupadosEnSlot = new Set<number>(
+        (citasSlot || []).map((c: any) => c.id_consultorio),
+      );
+
+      // 3. Filtrar los libres en ese slot
+      const libres = consultorios.filter((c: any) => !ocupadosEnSlot.has(c.id));
+      if (libres.length === 0) return null;
+
+      // 4. Elegir uno al azar
+      return libres[Math.floor(Math.random() * libres.length)] as { id: number; numero: string };
+    } catch {
+      return null;
+    }
+  };
+
   // ── Crear cita ────────────────────────────────────────────────────────────
   const handleCreateAppointment = async () => {
     if (!formData.id_doctor || !formData.fecha || !formData.hora || !formData.motivo) {
@@ -209,12 +263,13 @@ export default function ScheduleScreen({ navigation }: any) {
 
       if (conflicto) {
         Alert.alert('Horario no disponible', 'Ese horario acaba de ser tomado. Por favor elige otro.');
-        // Recargar slots
         if (selectedDoctor) fetchOccupiedSlots(selectedDoctor, formData.fecha);
         setFormData(prev => ({ ...prev, hora: '' }));
+        setConsultorioAsignado(null);
         return;
       }
 
+      // Usar el consultorio ya asignado en el preview (mismo que se muestra al usuario)
       const { error } = await supabase.from('citas').insert([{
         id_doctor: Number(formData.id_doctor),
         id_paciente: Number(userData.id),
@@ -222,6 +277,7 @@ export default function ScheduleScreen({ navigation }: any) {
         hora: formData.hora,
         motivo: formData.motivo,
         estado: 'pendiente',
+        id_consultorio: consultorioAsignado?.id ?? null,
       }]);
 
       if (error) throw error;
@@ -399,8 +455,13 @@ export default function ScheduleScreen({ navigation }: any) {
                           selected && styles.slotBtnSelected,
                           occupied && styles.slotBtnOccupied,
                         ]}
-                        onPress={() => {
-                          if (!occupied) setFormData(prev => ({ ...prev, hora: slot }));
+                        onPress={async () => {
+                          if (!occupied) {
+                            setFormData(prev => ({ ...prev, hora: slot }));
+                            setConsultorioAsignado(null);
+                            const c = await asignarConsultorio(formData.fecha, slot);
+                            setConsultorioAsignado(c);
+                          }
                         }}
                         activeOpacity={occupied ? 1 : 0.75}
                         disabled={occupied}
@@ -483,6 +544,14 @@ export default function ScheduleScreen({ navigation }: any) {
             <View style={styles.summaryRow}>
               <Text style={styles.summaryIcon}>🕐</Text>
               <Text style={styles.summaryText}>{formData.hora} hrs</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryIcon}>🏥</Text>
+              <Text style={styles.summaryText}>
+                {consultorioAsignado
+                  ? `Consultorio ${consultorioAsignado.numero}`
+                  : 'Buscando consultorio...'}
+              </Text>
             </View>
           </View>
         ) : null}
