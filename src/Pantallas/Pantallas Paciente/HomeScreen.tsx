@@ -50,6 +50,9 @@ export default function HomeScreen({ navigation }: any) {
                   nombre,
                   apellido1
                 )
+              ),
+              consultorios (
+                numero
               )
             `)
             .eq('id_paciente', userData.id)
@@ -64,7 +67,8 @@ export default function HomeScreen({ navigation }: any) {
               hora: c.hora,
               nombreDoctor: c.doctores?.usuarios
                 ? `Dr. ${c.doctores.usuarios.nombre} ${c.doctores.usuarios.apellido1}`
-                : "Doctor no asignado"
+                : "Doctor no asignado",
+              consultorio: c.consultorios?.numero ?? null,
             }));
             setCitasReales(formateadas);
           }
@@ -226,6 +230,9 @@ export default function HomeScreen({ navigation }: any) {
               <View style={styles.citaInfo}>
                 <Text style={styles.citaDoctor}>{cita.nombreDoctor}</Text>
                 <Text style={styles.citaDetalle}>{formatFecha(cita.fecha)}</Text>
+                {cita.consultorio ? (
+                  <Text style={styles.citaConsultorio}>🏥 Consultorio {cita.consultorio}</Text>
+                ) : null}
               </View>
               <View style={styles.citaHoraContainer}>
                 <Text style={styles.citaHora}>{cita.hora}</Text>
@@ -510,6 +517,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748b',
     marginTop: 3,
+  },
+  citaConsultorio: {
+    fontSize: 12,
+    color: '#2563eb',
+    marginTop: 3,
+    fontWeight: '500',
   },
   citaHoraContainer: {
     paddingRight: 8,

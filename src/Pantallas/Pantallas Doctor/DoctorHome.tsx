@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useContext, useCallback } from 'react';
 import {
   View,
@@ -215,6 +216,18 @@ export default function DoctorHome({ navigation }: any) {
 
           {/* Próxima cita del día */}
           {proximaCita ? (
+            proximaCita.estado === 'completada' ? (
+              <View style={styles.nextCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.nextLabel}>Primera cita del día · Completada</Text>
+                  <Text style={styles.nextPatient}>{proximaCita.nombrePaciente}</Text>
+                  <Text style={styles.nextDetail}>{proximaCita.hora} hrs · {proximaCita.motivo}</Text>
+                </View>
+                <View style={styles.nextBadge}>
+                  <Text style={styles.nextBadgeText}>✅</Text>
+                </View>
+              </View>
+            ) : (
             <TouchableOpacity
               style={styles.nextCard}
               activeOpacity={0.8}
@@ -236,6 +249,7 @@ export default function DoctorHome({ navigation }: any) {
                 <Text style={styles.nextBadgeText}>🩺</Text>
               </View>
             </TouchableOpacity>
+            )
           ) : (
             <View style={styles.nextCard}>
               <View style={{ flex: 1 }}>
@@ -293,38 +307,47 @@ export default function DoctorHome({ navigation }: any) {
         <Text style={styles.sectionTitle}>Citas de hoy</Text>
 
         {proximasCitas.length > 0 ? (
-          proximasCitas.map((cita, index) => (
-            <TouchableOpacity
-              key={cita.id}
-              style={styles.citaCard}
-              activeOpacity={0.75}
-              onPress={() => navigation.navigate('Consulta', {
-                citaId: cita.id,
-                nombrePaciente: cita.nombrePaciente,
-                motivo: cita.motivo,
-                hora: cita.hora,
-                estado: cita.estado,
-                idDoctor: doctorInfo.id,
-              })}
-            >
-              <View style={[styles.citaAccent, index === 0 && styles.citaAccentFirst]} />
-              <View style={styles.citaInfo}>
-                <Text style={styles.citaPatient}>{cita.nombrePaciente}</Text>
-                <Text style={styles.citaMotivo}>{cita.motivo}</Text>
-              </View>
-              <View style={styles.citaRight}>
-                <Text style={styles.citaHora}>{cita.hora}</Text>
-                <View style={[
-                  styles.estadoBadge,
-                  cita.estado === 'pendiente' && styles.estadoPendiente,
-                  cita.estado === 'completada' && styles.estadoCompletada,
-                ]}>
-                  <Text style={styles.estadoText}>{cita.estado}</Text>
+          proximasCitas.map((cita, index) => {
+            const completada = cita.estado === 'completada';
+            const CardWrapper = completada ? View : TouchableOpacity;
+            const wrapperProps = completada
+              ? {}
+              : {
+                  activeOpacity: 0.75,
+                  onPress: () => navigation.navigate('Consulta', {
+                    citaId: cita.id,
+                    nombrePaciente: cita.nombrePaciente,
+                    motivo: cita.motivo,
+                    hora: cita.hora,
+                    estado: cita.estado,
+                    idDoctor: doctorInfo.id,
+                  }),
+                };
+            return (
+              <CardWrapper
+                key={cita.id}
+                style={[styles.citaCard, completada && styles.citaCardCompletada]}
+                {...wrapperProps}
+              >
+                <View style={[styles.citaAccent, index === 0 && styles.citaAccentFirst]} />
+                <View style={styles.citaInfo}>
+                  <Text style={styles.citaPatient}>{cita.nombrePaciente}</Text>
+                  <Text style={styles.citaMotivo}>{cita.motivo}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={14} color="#94a3b8" />
-              </View>
-            </TouchableOpacity>
-          ))
+                <View style={styles.citaRight}>
+                  <Text style={styles.citaHora}>{cita.hora}</Text>
+                  <View style={[
+                    styles.estadoBadge,
+                    cita.estado === 'pendiente' && styles.estadoPendiente,
+                    cita.estado === 'completada' && styles.estadoCompletada,
+                  ]}>
+                    <Text style={styles.estadoText}>{cita.estado}</Text>
+                  </View>
+                  {!completada && <Ionicons name="chevron-forward" size={14} color="#94a3b8" />}
+                </View>
+              </CardWrapper>
+            );
+          })
         ) : (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>🗓️</Text>
@@ -471,6 +494,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+  },
+  citaCardCompletada: {
+    opacity: 0.6,
   },
   citaAccent: { width: 4, alignSelf: 'stretch', backgroundColor: '#93c5fd' },
   citaAccentFirst: { backgroundColor: BLUE },
