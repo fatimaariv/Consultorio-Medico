@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   View, 
   TextInput, 
@@ -14,6 +14,7 @@ import {
   ScrollView 
 } from 'react-native';
 import { login } from '../services/authService';
+import { supabase } from '../supabase/supabase';
 
 export default function LoginScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
@@ -21,6 +22,50 @@ export default function LoginScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  // ── Estados de validación ─────────────────────────────────────────────────
+  // null = sin verificar, true = válido, false = inválido
+  const [emailValid, setEmailValid] = useState<boolean | null>(null);
+  const [emailChecking, setEmailChecking] = useState(false);
+  const [passwordValid, setPasswordValid] = useState<boolean | null>(null);
+
+  const emailDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Validación de formato ─────────────────────────────────────────────────
+  const isValidEmailFormat = (value: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+  // ── Correo: verificar contra BD con debounce ──────────────────────────────
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    setEmailValid(null);
+    setEmailChecking(false);
+
+    if (emailDebounceRef.current) clearTimeout(emailDebounceRef.current);
+    if (!isValidEmailFormat(value)) return;
+
+    setEmailChecking(true);
+    emailDebounceRef.current = setTimeout(async () => {
+      const { data } = await supabase
+        .from('usuarios')
+        .select('id')
+        .eq('correo', value)
+        .maybeSingle();
+
+      setEmailChecking(false);
+      setEmailValid(data !== null);
+    }, 600);
+  };
+
+  // ── Contraseña: mínimo 6 caracteres ──────────────────────────────────────
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    if (value.length === 0) {
+      setPasswordValid(null);
+    } else {
+      setPasswordValid(value.length >= 6);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -35,6 +80,51 @@ export default function LoginScreen({ navigation }: any) {
     } finally {
       setLoading(false);
     }
+  };
+
+  // ── Helpers de color ──────────────────────────────────────────────────────
+  const getFieldColors = (valid: boolean | null, focused: boolean) => {
+    if (valid === true)  return { border: '#16a34a', bg: '#f0fdf4' };
+    if (valid === false) return { border: '#dc2626', bg: '#fef2f2' };
+    if (focused)         return { border: '#2563EB', bg: '#EEF3FF' };
+    return { border: '#E4EAF8', bg: '#F7F9FF' };
+  };
+
+  const emailColors    = getFieldColors(emailValid,    focusedField === 'email');
+  const passwordColors = getFieldColors(passwordValid, focusedField === 'password');
+
+  // ── Ícono de estado dentro del campo ─────────────────────────────────────
+  const StatusIcon = ({ valid }: { valid: boolean | null }) => {
+    if (valid === null) return null;
+    return (
+      <Text style={{ fontSize: 16, marginRight: 12, color: valid ? '#16a34a' : '#dc2626' }}>
+        {valid ? '✓' : '✕'}
+      </Text>
+    );
+  };
+
+  // ── Franja de ayuda — solo aparece cuando hay algo que mostrar ───────────
+  const HelperText = ({
+    valid,
+    checking,
+    validMsg,
+    invalidMsg,
+  }: {
+    valid: boolean | null;
+    checking?: boolean;
+    validMsg: string;
+    invalidMsg: string;
+  }) => {
+    if (!checking && valid === null) return null; // sin hueco cuando no hay mensaje
+    const isValid = valid === true;
+    const color   = checking ? '#94a3b8' : isValid ? '#16a34a' : '#dc2626';
+    const bgColor = checking ? '#f8fafc' : isValid ? '#f0fdf4' : '#fef2f2';
+    const msg     = checking ? 'Verificando...' : isValid ? `✓  ${validMsg}` : `✕  ${invalidMsg}`;
+    return (
+      <View style={[styles.helperBar, { backgroundColor: bgColor }]}>
+        <Text style={[styles.helperText, { color }]}>{msg}</Text>
+      </View>
+    );
   };
 
   return (
@@ -58,30 +148,51 @@ export default function LoginScreen({ navigation }: any) {
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Iniciar sesión</Text>
 
+            {/* ── Correo ── */}
             <Text style={styles.fieldLabel}>Correo electrónico</Text>
-            <TextInput 
-              placeholder="correo@ejemplo.com"
-              placeholderTextColor="#B0BAC9"
-              style={[styles.input, focusedField === 'email' && styles.inputFocused]}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              onFocus={() => setFocusedField('email')}
-              onBlur={() => setFocusedField(null)}
+            <View style={[
+              styles.inputRow,
+              { borderColor: emailColors.border, backgroundColor: emailColors.bg }
+            ]}>
+              <TextInput 
+                placeholder="correo@ejemplo.com"
+                placeholderTextColor="#B0BAC9"
+                style={styles.inputInner}
+                onChangeText={handleEmailChange}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                onFocus={() => setFocusedField('email')}
+                onBlur={() => setFocusedField(null)}
+              />
+              {emailChecking
+                ? <ActivityIndicator size="small" color="#94a3b8" style={{ marginRight: 12 }} />
+                : <StatusIcon valid={emailValid} />
+              }
+            </View>
+            <HelperText
+              valid={emailValid}
+              checking={emailChecking}
+              validMsg="Correo encontrado"
+              invalidMsg="Este correo no está registrado"
             />
 
-            <Text style={styles.fieldLabel}>Contraseña</Text>
-            <View style={[styles.passwordContainer, focusedField === 'password' && styles.inputFocused]}>
+            {/* ── Contraseña ── */}
+            <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Contraseña</Text>
+            <View style={[
+              styles.inputRow,
+              { borderColor: passwordColors.border, backgroundColor: passwordColors.bg }
+            ]}>
               <TextInput 
                 placeholder="Tu contraseña"
                 placeholderTextColor="#B0BAC9"
-                style={styles.inputPassword}
+                style={styles.inputInner}
                 secureTextEntry={!showPassword} 
-                onChangeText={setPassword}
+                onChangeText={handlePasswordChange}
                 autoCapitalize="none"
                 onFocus={() => setFocusedField('password')}
                 onBlur={() => setFocusedField(null)}
               />
+              <StatusIcon valid={passwordValid} />
               <TouchableOpacity 
                 onPress={() => setShowPassword(!showPassword)} 
                 style={styles.eyeButton}
@@ -89,6 +200,11 @@ export default function LoginScreen({ navigation }: any) {
                 <Text style={styles.eyeText}>{showPassword ? "Ocultar" : "Ver"}</Text>
               </TouchableOpacity>
             </View>
+            <HelperText
+              valid={passwordValid}
+              validMsg="Contraseña válida"
+              invalidMsg="Mínimo 6 caracteres"
+            />
 
           </View>
 
@@ -147,35 +263,31 @@ const styles = StyleSheet.create({
 
   fieldLabel: { fontSize: 13, fontWeight: '600', color: '#4B5B7B', marginBottom: 6, marginLeft: 2 },
 
-  input: { 
-    backgroundColor: '#F7F9FF', 
-    padding: 14, 
-    borderRadius: 12, 
-    marginBottom: 14, 
-    borderWidth: 1.5, 
-    borderColor: '#E4EAF8',
-    fontSize: 15,
-    color: '#1A2540',
-  },
-  inputFocused: { borderColor: '#2563EB', backgroundColor: '#EEF3FF' },
-
-  passwordContainer: {
+  // ── Campo con ícono ──
+  inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F7F9FF',
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#E4EAF8',
-    marginBottom: 4,
   },
-  inputPassword: {
+  inputInner: {
     flex: 1,
     padding: 14,
     fontSize: 15,
     color: '#1A2540',
   },
+
   eyeButton: { paddingHorizontal: 14 },
   eyeText: { color: '#2563EB', fontSize: 13, fontWeight: '600' },
+
+  // ── Franja de ayuda ──
+  helperBar: {
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginTop: 6,
+  },
+  helperText: { fontSize: 12, fontWeight: '600' },
 
   forgotLink: { alignItems: 'center', marginTop: 14, marginBottom: 4 },
   forgotText: { color: '#6B7A99', fontSize: 13, fontWeight: '600' },
