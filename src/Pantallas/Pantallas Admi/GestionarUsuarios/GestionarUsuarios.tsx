@@ -12,10 +12,17 @@ import {
   Platform,
   Keyboard,
   TouchableWithoutFeedback,
+  StatusBar,
 } from 'react-native';
 
-import { SafeAreaView } from 'react-native-safe-area-context'; // ✅
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../../supabase/supabase';
+import { Ionicons } from '@expo/vector-icons';
+
+// ─── Constantes (idénticas a AdmiHome) ───────────────────────────────────────
+const BLUE      = '#2563eb';
+const BLUE_DARK = '#1a4fd6';
+
 // ──────────────────────────────────────────────
 // Tipos
 // ──────────────────────────────────────────────
@@ -73,7 +80,7 @@ function Campo({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder ?? label}
-        placeholderTextColor="#9CA3AF"
+        placeholderTextColor="#94a3b8"
         keyboardType={keyboardType}
         secureTextEntry={secureTextEntry}
         multiline={multiline}
@@ -89,11 +96,10 @@ function Campo({
 // ──────────────────────────────────────────────
 export default function GestionarUsuarios() {
   const [correoBusqueda, setCorreoBusqueda] = useState('');
-  const [buscando, setBuscando] = useState(false);
-  const [guardando, setGuardando] = useState(false);
-  const [paciente, setPaciente] = useState<PacienteCompleto | null>(null);
+  const [buscando, setBuscando]             = useState(false);
+  const [guardando, setGuardando]           = useState(false);
+  const [paciente, setPaciente]             = useState<PacienteCompleto | null>(null);
 
-  // Campos editables del formulario
   const [form, setForm] = useState({
     nombre: '',
     apellido1: '',
@@ -105,7 +111,7 @@ export default function GestionarUsuarios() {
     enfermedades: '',
   });
 
-  // ── Búsqueda ──────────────────────────────────
+  // ── Búsqueda ──────────────────────────────────────────────────────────────
   const buscarPaciente = async () => {
     if (!correoBusqueda.trim()) {
       Alert.alert('Campo vacío', 'Ingresa el correo del paciente.');
@@ -116,7 +122,6 @@ export default function GestionarUsuarios() {
     setPaciente(null);
 
     try {
-      // 1. Buscar en usuarios por correo y rol de paciente
       const { data: usuario, error: errorUsuario } = await supabase
         .from('usuarios')
         .select('*')
@@ -128,7 +133,6 @@ export default function GestionarUsuarios() {
         return;
       }
 
-      // 2. Buscar datos del paciente
       const { data: pacienteData, error: errorPaciente } = await supabase
         .from('pacientes')
         .select('*')
@@ -143,14 +147,14 @@ export default function GestionarUsuarios() {
       const completo: PacienteCompleto = { ...usuario, ...pacienteData };
       setPaciente(completo);
       setForm({
-        nombre: completo.nombre,
-        apellido1: completo.apellido1,
-        apellido2: completo.apellido2 ?? '',
-        correo: completo.correo,
-        telefono: completo.telefono ?? '',
-        genero: completo.genero,
+        nombre:           completo.nombre,
+        apellido1:        completo.apellido1,
+        apellido2:        completo.apellido2 ?? '',
+        correo:           completo.correo,
+        telefono:         completo.telefono ?? '',
+        genero:           completo.genero,
         fecha_nacimiento: completo.fecha_nacimiento,
-        enfermedades: completo.enfermedades,
+        enfermedades:     completo.enfermedades,
       });
     } catch (e) {
       Alert.alert('Error', 'Ocurrió un error inesperado.');
@@ -160,7 +164,7 @@ export default function GestionarUsuarios() {
     }
   };
 
-  // ── Guardar cambios ───────────────────────────
+  // ── Guardar cambios ───────────────────────────────────────────────────────
   const guardarCambios = async () => {
     if (!paciente) return;
     Keyboard.dismiss();
@@ -172,47 +176,42 @@ export default function GestionarUsuarios() {
 
     setGuardando(true);
     try {
-      // Actualizar tabla usuarios
       const { error: errorUsuario } = await supabase
         .from('usuarios')
         .update({
-          nombre: form.nombre.trim(),
+          nombre:    form.nombre.trim(),
           apellido1: form.apellido1.trim(),
           apellido2: form.apellido2.trim() || null,
-          correo: form.correo.trim().toLowerCase(),
-          telefono: form.telefono.trim() || null,
-          genero: form.genero.trim(),
+          correo:    form.correo.trim().toLowerCase(),
+          telefono:  form.telefono.trim() || null,
+          genero:    form.genero.trim(),
         })
         .eq('id', paciente.id);
 
       if (errorUsuario) throw errorUsuario;
 
-      // Actualizar tabla pacientes
       const { error: errorPaciente } = await supabase
         .from('pacientes')
         .update({
           fecha_nacimiento: form.fecha_nacimiento.trim(),
-          enfermedades: form.enfermedades.trim(),
+          enfermedades:     form.enfermedades.trim(),
         })
         .eq('id', paciente.id);
 
       if (errorPaciente) throw errorPaciente;
 
-      // Refrescar estado local
       setPaciente((prev) =>
-        prev
-          ? {
-              ...prev,
-              nombre: form.nombre.trim(),
-              apellido1: form.apellido1.trim(),
-              apellido2: form.apellido2.trim() || null,
-              correo: form.correo.trim().toLowerCase(),
-              telefono: form.telefono.trim() || null,
-              genero: form.genero.trim(),
-              fecha_nacimiento: form.fecha_nacimiento.trim(),
-              enfermedades: form.enfermedades.trim(),
-            }
-          : prev
+        prev ? {
+          ...prev,
+          nombre:           form.nombre.trim(),
+          apellido1:        form.apellido1.trim(),
+          apellido2:        form.apellido2.trim() || null,
+          correo:           form.correo.trim().toLowerCase(),
+          telefono:         form.telefono.trim() || null,
+          genero:           form.genero.trim(),
+          fecha_nacimiento: form.fecha_nacimiento.trim(),
+          enfermedades:     form.enfermedades.trim(),
+        } : prev
       );
 
       Alert.alert('Éxito', 'Los datos del paciente han sido actualizados correctamente.');
@@ -224,12 +223,11 @@ export default function GestionarUsuarios() {
     }
   };
 
-  // ──────────────────────────────────────────────
-  // Render
-  // ──────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* KeyboardAvoidingView evita que el teclado tape los campos */}
+      <StatusBar barStyle="light-content" backgroundColor={BLUE_DARK} />
+
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -242,118 +240,135 @@ export default function GestionarUsuarios() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* Encabezado */}
+
+            {/* ── HEADER (mismo estilo que AdmiHome) ── */}
             <View style={styles.header}>
-              <Text style={styles.headerTitle}>Gestionar Paciente</Text>
-              <Text style={styles.headerSubtitle}>
-                Busca al paciente por correo electrónico para consultar y editar sus datos.
-              </Text>
+              <View style={styles.headerBubble1} />
+              <View style={styles.headerBubble2} />
+
+              <View style={styles.headerTop}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.logoText}>Medi Track · Admin</Text>
+                  <Text style={styles.headerTitle}>Gestionar Pacientes</Text>
+                  <Text style={styles.headerSubtitle}>
+                    Busca por correo para consultar y editar datos.
+                  </Text>
+                </View>
+                <View style={[styles.headerIconWrap]}>
+                  <Ionicons name="people-outline" size={28} color="rgba(255,255,255,0.85)" />
+                </View>
+              </View>
             </View>
 
-            {/* Buscador */}
-            <View style={styles.buscadorCard}>
-              <Text style={styles.sectionTitle}>Buscar paciente</Text>
+            {/* ── BUSCADOR ── */}
+            <Text style={styles.sectionTitle}>Buscar paciente</Text>
+
+            <View style={styles.card}>
               <View style={styles.buscadorRow}>
-                <TextInput
-                  style={styles.buscadorInput}
-                  value={correoBusqueda}
-                  onChangeText={setCorreoBusqueda}
-                  placeholder="correo@ejemplo.com"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  returnKeyType="search"
-                  onSubmitEditing={buscarPaciente}
-                />
+                <View style={styles.buscadorInputWrap}>
+                  <Ionicons name="mail-outline" size={16} color="#94a3b8" style={styles.buscadorIcon} />
+                  <TextInput
+                    style={styles.buscadorInput}
+                    value={correoBusqueda}
+                    onChangeText={setCorreoBusqueda}
+                    placeholder="correo@ejemplo.com"
+                    placeholderTextColor="#94a3b8"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    returnKeyType="search"
+                    onSubmitEditing={buscarPaciente}
+                  />
+                </View>
                 <TouchableOpacity
                   style={[styles.botonBuscar, buscando && styles.botonDeshabilitado]}
                   onPress={buscarPaciente}
                   disabled={buscando}
                 >
-                  {buscando ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text style={styles.botonBuscarTexto}>Buscar</Text>
-                  )}
+                  {buscando
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Ionicons name="search" size={18} color="#fff" />
+                  }
                 </TouchableOpacity>
               </View>
             </View>
 
-            {/* Formulario de edición */}
+            {/* ── FORMULARIO ── */}
             {paciente && (
-              <View style={styles.formCard}>
+              <>
+                {/* Chip de ID */}
+                <View style={styles.pacienteChip}>
+                  <Ionicons name="person-circle-outline" size={16} color={BLUE} />
+                  <Text style={styles.pacienteChipText}>
+                    Paciente #{paciente.id} · {paciente.nombre} {paciente.apellido1}
+                  </Text>
+                </View>
+
+                {/* Grupo: Información personal */}
                 <Text style={styles.sectionTitle}>Datos del paciente</Text>
-                <Text style={styles.pacienteId}>ID: #{paciente.id}</Text>
 
-                {/* Datos personales */}
-                <Text style={styles.groupLabel}>Información personal</Text>
-                <Campo
-                  label="Nombre"
-                  value={form.nombre}
-                  onChangeText={(t) => setForm((f) => ({ ...f, nombre: t }))}
-                />
-                <Campo
-                  label="Primer apellido"
-                  value={form.apellido1}
-                  onChangeText={(t) => setForm((f) => ({ ...f, apellido1: t }))}
-                />
-                <Campo
-                  label="Segundo apellido (opcional)"
-                  value={form.apellido2}
-                  onChangeText={(t) => setForm((f) => ({ ...f, apellido2: t }))}
-                />
-                <Campo
-                  label="Género"
-                  value={form.genero}
-                  onChangeText={(t) => setForm((f) => ({ ...f, genero: t }))}
-                  placeholder="Ej. Masculino, Femenino, Otro"
-                />
-                <Campo
-                  label="Fecha de nacimiento"
-                  value={form.fecha_nacimiento}
-                  onChangeText={(t) => setForm((f) => ({ ...f, fecha_nacimiento: t }))}
-                  placeholder="YYYY-MM-DD"
-                />
+                <View style={styles.card}>
+                  <View style={styles.groupHeader}>
+                    <View style={[styles.groupIconWrap, { backgroundColor: '#dbeafe' }]}>
+                      <Ionicons name="person-outline" size={16} color={BLUE} />
+                    </View>
+                    <Text style={styles.groupLabel}>Información personal</Text>
+                  </View>
+                  <Campo label="Nombre"                   value={form.nombre}           onChangeText={(t) => setForm((f) => ({ ...f, nombre: t }))} />
+                  <Campo label="Primer apellido"          value={form.apellido1}        onChangeText={(t) => setForm((f) => ({ ...f, apellido1: t }))} />
+                  <Campo label="Segundo apellido (opcional)" value={form.apellido2}     onChangeText={(t) => setForm((f) => ({ ...f, apellido2: t }))} />
+                  <Campo label="Género"                   value={form.genero}           onChangeText={(t) => setForm((f) => ({ ...f, genero: t }))}           placeholder="Ej. Masculino, Femenino, Otro" />
+                  <Campo label="Fecha de nacimiento"      value={form.fecha_nacimiento} onChangeText={(t) => setForm((f) => ({ ...f, fecha_nacimiento: t }))} placeholder="YYYY-MM-DD" />
+                </View>
 
-                {/* Contacto */}
-                <Text style={styles.groupLabel}>Contacto</Text>
-                <Campo
-                  label="Correo electrónico"
-                  value={form.correo}
-                  onChangeText={(t) => setForm((f) => ({ ...f, correo: t }))}
-                  keyboardType="email-address"
-                />
-                <Campo
-                  label="Teléfono (opcional)"
-                  value={form.telefono}
-                  onChangeText={(t) => setForm((f) => ({ ...f, telefono: t }))}
-                  keyboardType="phone-pad"
-                />
+                {/* Grupo: Contacto */}
+                <View style={[styles.card, { marginTop: 12 }]}>
+                  <View style={styles.groupHeader}>
+                    <View style={[styles.groupIconWrap, { backgroundColor: '#fce7f3' }]}>
+                      <Ionicons name="call-outline" size={16} color="#db2777" />
+                    </View>
+                    <Text style={styles.groupLabel}>Contacto</Text>
+                  </View>
+                  <Campo label="Correo electrónico" value={form.correo}   onChangeText={(t) => setForm((f) => ({ ...f, correo: t }))}   keyboardType="email-address" />
+                  <Campo label="Teléfono (opcional)" value={form.telefono} onChangeText={(t) => setForm((f) => ({ ...f, telefono: t }))} keyboardType="phone-pad" />
+                </View>
 
-                {/* Historial médico */}
-                <Text style={styles.groupLabel}>Historial médico</Text>
-                <Campo
-                  label="Enfermedades"
-                  value={form.enfermedades}
-                  onChangeText={(t) => setForm((f) => ({ ...f, enfermedades: t }))}
-                  placeholder="Ej. Diabetes tipo 2, Hipertensión"
-                  multiline
-                />
+                {/* Grupo: Historial médico */}
+                <View style={[styles.card, { marginTop: 12 }]}>
+                  <View style={styles.groupHeader}>
+                    <View style={[styles.groupIconWrap, { backgroundColor: '#d1fae5' }]}>
+                      <Ionicons name="medkit-outline" size={16} color="#059669" />
+                    </View>
+                    <Text style={styles.groupLabel}>Historial médico</Text>
+                  </View>
+                  <Campo
+                    label="Enfermedades"
+                    value={form.enfermedades}
+                    onChangeText={(t) => setForm((f) => ({ ...f, enfermedades: t }))}
+                    placeholder="Ej. Diabetes tipo 2, Hipertensión"
+                    multiline
+                  />
+                </View>
 
                 {/* Botón guardar */}
                 <TouchableOpacity
                   style={[styles.botonGuardar, guardando && styles.botonDeshabilitado]}
                   onPress={guardarCambios}
                   disabled={guardando}
+                  activeOpacity={0.85}
                 >
                   {guardando ? (
                     <ActivityIndicator color="#fff" size="small" />
                   ) : (
-                    <Text style={styles.botonGuardarTexto}>Guardar cambios</Text>
+                    <>
+                      <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+                      <Text style={styles.botonGuardarTexto}>Guardar cambios</Text>
+                    </>
                   )}
                 </TouchableOpacity>
-              </View>
+              </>
             )}
+
+            <View style={{ height: 30 }} />
           </ScrollView>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
@@ -361,161 +376,183 @@ export default function GestionarUsuarios() {
   );
 }
 
-// ──────────────────────────────────────────────
-// Estilos
-// ──────────────────────────────────────────────
-const AZUL = '#2563EB';
-const AZUL_CLARO = '#EFF6FF';
-const GRIS_BORDE = '#E5E7EB';
-
+// ─── Estilos ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  flex: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
+  safeArea: { flex: 1, backgroundColor: '#f0f4ff' },
+  flex:     { flex: 1 },
+  scrollContent: { paddingBottom: 40 },
 
-  // Header
+  // ── Header (mismo patrón que AdmiHome) ──
   header: {
-    marginBottom: 20,
+    backgroundColor: BLUE_DARK,
+    paddingHorizontal: 22,
+    paddingTop: 18,
+    paddingBottom: 28,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    overflow: 'hidden',
+    marginBottom: 24,
+  },
+  headerBubble1: {
+    position: 'absolute', width: 180, height: 180, borderRadius: 90,
+    backgroundColor: 'rgba(255,255,255,0.07)', top: -60, right: -40,
+  },
+  headerBubble2: {
+    position: 'absolute', width: 100, height: 100, borderRadius: 50,
+    backgroundColor: 'rgba(255,255,255,0.05)', bottom: 10, left: -20,
+  },
+  headerTop: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
+  },
+  logoText: {
+    fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '600',
+    letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6,
   },
   headerTitle: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
+    fontSize: 22, fontWeight: 'bold', color: '#fff', marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 20,
+    fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 18,
+  },
+  headerIconWrap: {
+    width: 52, height: 52, borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
+    marginLeft: 12, marginTop: 18,
   },
 
-  // Cards
-  buscadorCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  formCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-
-  // Títulos de sección
+  // ── Sección ──
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  groupLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: AZUL,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  pacienteId: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginBottom: 8,
-    marginTop: -8,
+    fontSize: 17, fontWeight: 'bold', color: '#1e293b',
+    paddingHorizontal: 22, marginBottom: 12,
   },
 
-  // Buscador
+  // ── Card genérica (mismo shadow que AdmiHome) ──
+  card: {
+    backgroundColor: '#fff',
+    marginHorizontal: 22,
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+
+  // ── Buscador ──
   buscadorRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
+    alignItems: 'center',
   },
+  buscadorInputWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f4ff',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#dbe8ff',
+    paddingHorizontal: 12,
+  },
+  buscadorIcon: { marginRight: 8 },
   buscadorInput: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: GRIS_BORDE,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 11,
     fontSize: 15,
-    color: '#111827',
-    backgroundColor: '#F9FAFB',
+    color: '#1e293b',
   },
   botonBuscar: {
-    backgroundColor: AZUL,
-    borderRadius: 8,
-    paddingHorizontal: 18,
+    backgroundColor: BLUE,
+    borderRadius: 12,
+    width: 46,
+    height: 46,
     justifyContent: 'center',
     alignItems: 'center',
-    minWidth: 80,
-  },
-  botonBuscarTexto: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 15,
+    shadowColor: BLUE,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
 
-  // Campo de formulario
-  campoContainer: {
-    marginBottom: 12,
+  // ── Chip de paciente encontrado ──
+  pacienteChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#dbeafe',
+    marginHorizontal: 22,
+    marginBottom: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 12,
   },
+  pacienteChipText: {
+    fontSize: 13, fontWeight: '600', color: BLUE,
+  },
+
+  // ── Grupos dentro del formulario ──
+  groupHeader: {
+    flexDirection: 'row', alignItems: 'center',
+    gap: 10, marginBottom: 14,
+    paddingBottom: 12,
+    borderBottomWidth: 1, borderBottomColor: '#f1f5f9',
+  },
+  groupIconWrap: {
+    width: 32, height: 32, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  groupLabel: {
+    fontSize: 14, fontWeight: '700', color: '#1e293b',
+  },
+
+  // ── Campo de formulario ──
+  campoContainer: { marginBottom: 12 },
   campoLabel: {
-    fontSize: 13,
-    color: '#374151',
-    fontWeight: '500',
-    marginBottom: 4,
+    fontSize: 12, color: '#64748b', fontWeight: '600',
+    marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.4,
   },
   campoInput: {
-    borderWidth: 1,
-    borderColor: GRIS_BORDE,
-    borderRadius: 8,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 15,
-    color: '#111827',
-    backgroundColor: '#F9FAFB',
+    color: '#1e293b',
   },
   campoInputMultiline: {
     minHeight: 80,
     textAlignVertical: 'top',
   },
   campoInputDisabled: {
-    backgroundColor: '#F3F4F6',
-    color: '#9CA3AF',
+    backgroundColor: '#f1f5f9',
+    color: '#94a3b8',
   },
 
-  // Botón guardar
+  // ── Botón guardar ──
   botonGuardar: {
     backgroundColor: '#059669',
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
+    borderRadius: 14,
+    paddingVertical: 15,
+    marginHorizontal: 22,
     marginTop: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   botonGuardarTexto: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
+    color: '#fff', fontSize: 16, fontWeight: '700',
   },
-  botonDeshabilitado: {
-    opacity: 0.6,
-  },
+  botonDeshabilitado: { opacity: 0.6 },
 });
