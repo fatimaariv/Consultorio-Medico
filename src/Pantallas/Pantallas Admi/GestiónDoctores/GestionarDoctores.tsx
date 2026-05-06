@@ -9,10 +9,11 @@ import {
   Alert,
   TextInput,
   RefreshControl,
-  SafeAreaView,
   StatusBar,
   Platform,
 } from 'react-native';
+
+import { SafeAreaView } from 'react-native-safe-area-context'; // ✅
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import {
@@ -21,7 +22,6 @@ import {
   DoctorFormData,
 } from '../../../services/Doctoresadminservice';
 import FormularioDoctor from './Formulariodoctor';
-
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const BLUE      = '#2563eb';
 const BLUE_DARK = '#1a4fd6';

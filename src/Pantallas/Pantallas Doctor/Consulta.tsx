@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, StyleSheet, TouchableOpacity,
-  Alert, ActivityIndicator, ScrollView, SafeAreaView,
+  Alert, ActivityIndicator, ScrollView,
   StatusBar, Platform, KeyboardAvoidingView,
 } from 'react-native';
+
+import { SafeAreaView } from 'react-native-safe-area-context'; // ✅
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../supabase/supabase';
 

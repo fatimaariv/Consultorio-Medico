@@ -1,32 +1,22 @@
-
 import React, { useEffect, useState, useContext, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   ActivityIndicator,
   StatusBar,
   Platform,
 } from 'react-native';
+
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthContext } from '../../context/AuthContext';
 import { supabase } from '../../supabase/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────
-type DoctorInfo = {
-  nombre: string;
-  apellido1: string;
-  especialidad: string;
-  cedula: string;
-  hora_inicio: string;
-  hora_fin: string;
-  id: number | null;
-};
-
 type CitaHoy = {
   id: number;
   hora: string;
@@ -37,17 +27,13 @@ type CitaHoy = {
 
 // ─── Componente ────────────────────────────────────────────────────────────
 export default function DoctorHome({ navigation }: any) {
-  const { session } = useContext(AuthContext);
-  const [loading, setLoading] = useState(true);
-  const [doctorInfo, setDoctorInfo] = useState<DoctorInfo>({
-    nombre: '',
-    apellido1: '',
-    especialidad: '',
-    cedula: '',
-    hora_inicio: '',
-    hora_fin: '',
-    id: null,
-  });
+  const { session, doctorInfo, setDoctorInfo } = useContext(AuthContext);
+
+  // loadingInfo: solo la primera vez que se piden los datos del doctor
+  // loadingCitas: cada vez que se entra a la pantalla (citas pueden cambiar)
+  const [loadingInfo, setLoadingInfo] = useState(!doctorInfo);
+  const [loadingCitas, setLoadingCitas] = useState(true);
+
   const [stats, setStats] = useState({ totalPacientes: 0, citasHoy: 0, citasPendientes: 0 });
   const [proximasCitas, setProximasCitas] = useState<CitaHoy[]>([]);
 
@@ -59,39 +45,30 @@ export default function DoctorHome({ navigation }: any) {
     return 'Buenas noches';
   };
 
-  const formatFecha = (fecha: string) => {
-    const [year, month, day] = fecha.split('-');
-    const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-    return `${parseInt(day)} ${meses[parseInt(month) - 1]} ${year}`;
-  };
-
-  // ── Fetch datos ────────────────────────────────────────────────────────
-  const fetchDoctorData = async () => {
+  // ── Fetch info del doctor (solo si no está en caché) ───────────────────
+  const fetchDoctorInfo = async () => {
     try {
-      setLoading(true);
       if (!session?.user?.email) return;
 
-      // 1. Buscamos el usuario por correo para obtener su id
-      const { data: usuarioData, error: usuarioError } = await supabase
+      // Query única con JOIN — antes eran 2 queries secuenciales
+      const { data, error } = await supabase
         .from('usuarios')
-        .select('id, nombre, apellido1, apellido2')
+        .select(`
+          id, nombre, apellido1,
+          doctores ( id, especialidad, cedula, hora_inicio, hora_fin )
+        `)
         .eq('correo', session.user.email)
         .single();
 
-      if (usuarioError || !usuarioData) throw new Error('No se encontró el usuario.');
+      if (error || !data) throw new Error('No se encontró el usuario.');
 
-      // 2. Con el id del usuario buscamos el doctor (doctores.id === usuarios.id)
-      const { data: docData, error: docError } = await supabase
-        .from('doctores')
-        .select('id, especialidad, cedula, hora_inicio, hora_fin')
-        .eq('id', usuarioData.id)
-        .single();
+      const docData = Array.isArray(data.doctores) ? data.doctores[0] : data.doctores;
+      if (!docData) throw new Error('No se encontró el perfil de doctor.');
 
-      if (docError || !docData) throw new Error('No se encontró el perfil de doctor.');
-
+      // Guardar en caché del contexto
       setDoctorInfo({
-        nombre: usuarioData.nombre,
-        apellido1: usuarioData.apellido1,
+        nombre: data.nombre,
+        apellido1: data.apellido1,
         especialidad: docData.especialidad,
         cedula: docData.cedula,
         hora_inicio: docData.hora_inicio,
@@ -99,27 +76,54 @@ export default function DoctorHome({ navigation }: any) {
         id: docData.id,
       });
 
-      // 3. Stats: citas de hoy
+      return docData.id as number;
+    } catch (error: any) {
+      console.error('Error al obtener info del doctor:', error.message);
+      return null;
+    } finally {
+      setLoadingInfo(false);
+    }
+  };
+
+  // ── Fetch citas y stats del día (siempre al entrar a la pantalla) ──────
+  const fetchCitasYStats = async (doctorId: number) => {
+    try {
+      setLoadingCitas(true);
       const hoy = new Date().toISOString().split('T')[0];
 
-      const { count: citasHoyCount } = await supabase
-        .from('citas')
-        .select('*', { count: 'exact', head: true })
-        .eq('id_doctor', docData.id)
-        .eq('fecha', hoy);
-
-      // 4. Stats: citas pendientes totales
-      const { count: pendientesCount } = await supabase
-        .from('citas')
-        .select('*', { count: 'exact', head: true })
-        .eq('id_doctor', docData.id)
-        .eq('estado', 'pendiente');
-
-      // 5. Pacientes únicos atendidos
-      const { data: pacientesData } = await supabase
-        .from('citas')
-        .select('id_paciente')
-        .eq('id_doctor', docData.id);
+      // 3 queries en paralelo — antes eran 3 sequenciales
+      const [
+        { count: citasHoyCount },
+        { count: pendientesCount },
+        { data: pacientesData },
+        { data: citasData },
+      ] = await Promise.all([
+        supabase
+          .from('citas')
+          .select('*', { count: 'exact', head: true })
+          .eq('id_doctor', doctorId)
+          .eq('fecha', hoy),
+        supabase
+          .from('citas')
+          .select('*', { count: 'exact', head: true })
+          .eq('id_doctor', doctorId)
+          .eq('estado', 'pendiente'),
+        supabase
+          .from('citas')
+          .select('id_paciente')
+          .eq('id_doctor', doctorId),
+        supabase
+          .from('citas')
+          .select(`
+            id, hora, motivo, estado,
+            pacientes!citas_id_paciente_fkey (
+              usuarios!pacientes_id_fkey ( nombre, apellido1 )
+            )
+          `)
+          .eq('id_doctor', doctorId)
+          .eq('fecha', hoy)
+          .order('hora', { ascending: true }),
+      ]);
 
       const pacientesUnicos = new Set((pacientesData || []).map((c: any) => c.id_paciente)).size;
 
@@ -128,25 +132,6 @@ export default function DoctorHome({ navigation }: any) {
         citasHoy: citasHoyCount || 0,
         citasPendientes: pendientesCount || 0,
       });
-
-      // 6. Próximas citas de hoy con nombre del paciente
-      const { data: citasData } = await supabase
-        .from('citas')
-        .select(`
-          id,
-          hora,
-          motivo,
-          estado,
-          pacientes!citas_id_paciente_fkey (
-            usuarios!pacientes_id_fkey (
-              nombre,
-              apellido1
-            )
-          )
-        `)
-        .eq('id_doctor', docData.id)
-        .eq('fecha', hoy)
-        .order('hora', { ascending: true });
 
       const formateadas: CitaHoy[] = (citasData || []).map((c: any) => {
         const u = c.pacientes?.usuarios;
@@ -161,10 +146,17 @@ export default function DoctorHome({ navigation }: any) {
 
       setProximasCitas(formateadas);
     } catch (error: any) {
-      console.error('Error al obtener datos del doctor:', error.message);
+      console.error('Error al obtener citas:', error.message);
     } finally {
-      setLoading(false);
+      setLoadingCitas(false);
     }
+  };
+
+  // ── Orquestador principal ──────────────────────────────────────────────
+  const fetchDoctorData = async () => {
+    // Si ya hay info en caché, usarla directamente
+    const doctorId = doctorInfo?.id ?? (await fetchDoctorInfo());
+    if (doctorId) await fetchCitasYStats(doctorId);
   };
 
   useFocusEffect(
@@ -177,18 +169,10 @@ export default function DoctorHome({ navigation }: any) {
     await supabase.auth.signOut();
   };
 
-  // ── Loading ────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563eb" />
-        <Text style={styles.loadingText}>Cargando panel...</Text>
-      </View>
-    );
-  }
-
-  const nombreCompleto = `${doctorInfo.nombre} ${doctorInfo.apellido1}`;
+  const nombreCompleto = doctorInfo ? `${doctorInfo.nombre} ${doctorInfo.apellido1}` : '';
   const proximaCita = proximasCitas[0] || null;
+  // Carga general = esperando info del doctor por primera vez
+  const loading = loadingInfo;
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
@@ -197,7 +181,7 @@ export default function DoctorHome({ navigation }: any) {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* ── HEADER ── */}
+        {/* ── HEADER — siempre visible ── */}
         <View style={styles.header}>
           <View style={styles.headerBubble1} />
           <View style={styles.headerBubble2} />
@@ -206,16 +190,30 @@ export default function DoctorHome({ navigation }: any) {
             <View>
               <Text style={styles.logoText}>Medi Track · Panel Médico</Text>
               <Text style={styles.greetingText}>{getGreeting()},</Text>
-              <Text style={styles.userNameText}>Dr. {nombreCompleto} 👋</Text>
-              <Text style={styles.especialidadText}>{doctorInfo.especialidad}</Text>
+              <Text style={styles.userNameText}>
+                {loading ? 'Cargando...' : `Dr. ${nombreCompleto} 👋`}
+              </Text>
+              <Text style={styles.especialidadText}>
+                {loading ? '' : doctorInfo?.especialidad}
+              </Text>
             </View>
             <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
               <Text style={styles.logoutText}>Salir</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Próxima cita del día */}
-          {proximaCita ? (
+          {/* Próxima cita del día — placeholder mientras cargan las citas */}
+          {loadingCitas ? (
+            <View style={styles.nextCard}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.nextLabel}>Cargando...</Text>
+                <Text style={styles.nextPatient}>—</Text>
+              </View>
+              <View style={styles.nextBadge}>
+                <Text style={styles.nextBadgeText}>⏳</Text>
+              </View>
+            </View>
+          ) : proximaCita ? (
             proximaCita.estado === 'completada' ? (
               <View style={styles.nextCard}>
                 <View style={{ flex: 1 }}>
@@ -228,34 +226,36 @@ export default function DoctorHome({ navigation }: any) {
                 </View>
               </View>
             ) : (
-            <TouchableOpacity
-              style={styles.nextCard}
-              activeOpacity={0.8}
-              onPress={() => navigation.navigate('Consulta', {
-                citaId: proximaCita.id,
-                nombrePaciente: proximaCita.nombrePaciente,
-                motivo: proximaCita.motivo,
-                hora: proximaCita.hora,
-                estado: proximaCita.estado,
-                idDoctor: doctorInfo.id,
-              })}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={styles.nextLabel}>Primera cita del día · Toca para consultar</Text>
-                <Text style={styles.nextPatient}>{proximaCita.nombrePaciente}</Text>
-                <Text style={styles.nextDetail}>{proximaCita.hora} hrs · {proximaCita.motivo}</Text>
-              </View>
-              <View style={styles.nextBadge}>
-                <Text style={styles.nextBadgeText}>🩺</Text>
-              </View>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.nextCard}
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate('Consulta', {
+                  citaId: proximaCita.id,
+                  nombrePaciente: proximaCita.nombrePaciente,
+                  motivo: proximaCita.motivo,
+                  hora: proximaCita.hora,
+                  estado: proximaCita.estado,
+                  idDoctor: doctorInfo?.id,
+                })}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.nextLabel}>Primera cita del día · Toca para consultar</Text>
+                  <Text style={styles.nextPatient}>{proximaCita.nombrePaciente}</Text>
+                  <Text style={styles.nextDetail}>{proximaCita.hora} hrs · {proximaCita.motivo}</Text>
+                </View>
+                <View style={styles.nextBadge}>
+                  <Text style={styles.nextBadgeText}>🩺</Text>
+                </View>
+              </TouchableOpacity>
             )
           ) : (
             <View style={styles.nextCard}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.nextLabel}>Agenda de hoy</Text>
                 <Text style={styles.nextPatient}>Sin citas para hoy</Text>
-                <Text style={styles.nextDetail}>Horario: {doctorInfo.hora_inicio} – {doctorInfo.hora_fin}</Text>
+                <Text style={styles.nextDetail}>
+                  Horario: {doctorInfo?.hora_inicio} – {doctorInfo?.hora_fin}
+                </Text>
               </View>
               <View style={styles.nextBadge}>
                 <Text style={styles.nextBadgeText}>📋</Text>
@@ -264,95 +264,104 @@ export default function DoctorHome({ navigation }: any) {
           )}
         </View>
 
-        {/* ── STATS ── */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Ionicons name="people" size={22} color="#2563eb" />
-            <Text style={styles.statNumber}>{stats.totalPacientes}</Text>
-            <Text style={styles.statLabel}>Pacientes</Text>
+        {/* ── CONTENIDO — spinner solo en área de stats/citas ── */}
+        {loadingCitas ? (
+          <View style={styles.centerLoader}>
+            <ActivityIndicator size="large" color="#2563eb" />
+            <Text style={styles.loadingText}>Cargando panel...</Text>
           </View>
-          <View style={styles.statCard}>
-            <Ionicons name="calendar" size={22} color="#10b981" />
-            <Text style={[styles.statNumber, { color: '#10b981' }]}>{stats.citasHoy}</Text>
-            <Text style={styles.statLabel}>Hoy</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="time-outline" size={22} color="#f59e0b" />
-            <Text style={[styles.statNumber, { color: '#f59e0b' }]}>{stats.citasPendientes}</Text>
-            <Text style={styles.statLabel}>Pendientes</Text>
-          </View>
-        </View>
-
-        {/* ── ACCIONES ── */}
-        <View style={styles.actionsRow}>
-          <TouchableOpacity
-            style={styles.primaryBtn}
-            onPress={() => navigation.navigate('Agenda')}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="calendar-outline" size={20} color="#fff" />
-            <Text style={styles.primaryBtnText}>Ver Agenda</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.secondaryBtn}
-            onPress={() => navigation.navigate('HistorialDeCitas')}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="time-outline" size={20} color="#2563eb" />
-            <Text style={styles.secondaryBtnText}>Historial</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── CITAS DE HOY ── */}
-        <Text style={styles.sectionTitle}>Citas de hoy</Text>
-
-        {proximasCitas.length > 0 ? (
-          proximasCitas.map((cita, index) => {
-            const completada = cita.estado === 'completada';
-            const CardWrapper = completada ? View : TouchableOpacity;
-            const wrapperProps = completada
-              ? {}
-              : {
-                  activeOpacity: 0.75,
-                  onPress: () => navigation.navigate('Consulta', {
-                    citaId: cita.id,
-                    nombrePaciente: cita.nombrePaciente,
-                    motivo: cita.motivo,
-                    hora: cita.hora,
-                    estado: cita.estado,
-                    idDoctor: doctorInfo.id,
-                  }),
-                };
-            return (
-              <CardWrapper
-                key={cita.id}
-                style={[styles.citaCard, completada && styles.citaCardCompletada]}
-                {...wrapperProps}
-              >
-                <View style={[styles.citaAccent, index === 0 && styles.citaAccentFirst]} />
-                <View style={styles.citaInfo}>
-                  <Text style={styles.citaPatient}>{cita.nombrePaciente}</Text>
-                  <Text style={styles.citaMotivo}>{cita.motivo}</Text>
-                </View>
-                <View style={styles.citaRight}>
-                  <Text style={styles.citaHora}>{cita.hora}</Text>
-                  <View style={[
-                    styles.estadoBadge,
-                    cita.estado === 'pendiente' && styles.estadoPendiente,
-                    cita.estado === 'completada' && styles.estadoCompletada,
-                  ]}>
-                    <Text style={styles.estadoText}>{cita.estado}</Text>
-                  </View>
-                  {!completada && <Ionicons name="chevron-forward" size={14} color="#94a3b8" />}
-                </View>
-              </CardWrapper>
-            );
-          })
         ) : (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🗓️</Text>
-            <Text style={styles.emptyText}>No hay citas programadas para hoy</Text>
-          </View>
+          <>
+            <View style={styles.statsRow}>
+              <View style={styles.statCard}>
+                <Ionicons name="people" size={22} color="#2563eb" />
+                <Text style={styles.statNumber}>{stats.totalPacientes}</Text>
+                <Text style={styles.statLabel}>Pacientes</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Ionicons name="calendar" size={22} color="#10b981" />
+                <Text style={[styles.statNumber, { color: '#10b981' }]}>{stats.citasHoy}</Text>
+                <Text style={styles.statLabel}>Hoy</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Ionicons name="time-outline" size={22} color="#f59e0b" />
+                <Text style={[styles.statNumber, { color: '#f59e0b' }]}>{stats.citasPendientes}</Text>
+                <Text style={styles.statLabel}>Pendientes</Text>
+              </View>
+            </View>
+
+            {/* ── ACCIONES ── */}
+            <View style={styles.actionsRow}>
+              <TouchableOpacity
+                style={styles.primaryBtn}
+                onPress={() => navigation.navigate('Agenda')}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="calendar-outline" size={20} color="#fff" />
+                <Text style={styles.primaryBtnText}>Ver Agenda</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.secondaryBtn}
+                onPress={() => navigation.navigate('HistorialDeCitas')}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="time-outline" size={20} color="#2563eb" />
+                <Text style={styles.secondaryBtnText}>Historial</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* ── CITAS DE HOY ── */}
+            <Text style={styles.sectionTitle}>Citas de hoy</Text>
+
+            {proximasCitas.length > 0 ? (
+              proximasCitas.map((cita, index) => {
+                const completada = cita.estado === 'completada';
+                const CardWrapper = completada ? View : TouchableOpacity;
+                const wrapperProps = completada
+                  ? {}
+                  : {
+                      activeOpacity: 0.75,
+                      onPress: () => navigation.navigate('Consulta', {
+                        citaId: cita.id,
+                        nombrePaciente: cita.nombrePaciente,
+                        motivo: cita.motivo,
+                        hora: cita.hora,
+                        estado: cita.estado,
+                        idDoctor: doctorInfo?.id,
+                      }),
+                    };
+                return (
+                  <CardWrapper
+                    key={cita.id}
+                    style={[styles.citaCard, completada && styles.citaCardCompletada]}
+                    {...wrapperProps}
+                  >
+                    <View style={[styles.citaAccent, index === 0 && styles.citaAccentFirst]} />
+                    <View style={styles.citaInfo}>
+                      <Text style={styles.citaPatient}>{cita.nombrePaciente}</Text>
+                      <Text style={styles.citaMotivo}>{cita.motivo}</Text>
+                    </View>
+                    <View style={styles.citaRight}>
+                      <Text style={styles.citaHora}>{cita.hora}</Text>
+                      <View style={[
+                        styles.estadoBadge,
+                        cita.estado === 'pendiente' && styles.estadoPendiente,
+                        cita.estado === 'completada' && styles.estadoCompletada,
+                      ]}>
+                        <Text style={styles.estadoText}>{cita.estado}</Text>
+                      </View>
+                      {!completada && <Ionicons name="chevron-forward" size={14} color="#94a3b8" />}
+                    </View>
+                  </CardWrapper>
+                );
+              })
+            ) : (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyIcon}>🗓️</Text>
+                <Text style={styles.emptyText}>No hay citas programadas para hoy</Text>
+              </View>
+            )}
+          </>
         )}
 
         <View style={{ height: 30 }} />
@@ -379,7 +388,10 @@ const BLUE_DARK = '#1a4fd6';
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f0f4ff' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f4ff' },
+  centerLoader: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
   loadingText: { marginTop: 12, color: '#6b7280', fontSize: 15 },
   scrollContent: { paddingBottom: 100 },
 
@@ -495,9 +507,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
-  citaCardCompletada: {
-    opacity: 0.6,
-  },
+  citaCardCompletada: { opacity: 0.6 },
   citaAccent: { width: 4, alignSelf: 'stretch', backgroundColor: '#93c5fd' },
   citaAccentFirst: { backgroundColor: BLUE },
   citaInfo: { flex: 1, paddingVertical: 14, paddingHorizontal: 14 },

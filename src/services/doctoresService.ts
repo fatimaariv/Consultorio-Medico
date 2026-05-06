@@ -2,7 +2,6 @@ import { supabase } from '../supabase/supabase';
 
 export const doctoresService = {
   async getAll() {
-    // Hacemos un join con 'usuarios' para obtener el nombre del doctor
     const { data, error } = await supabase
       .from('doctores')
       .select(`
@@ -12,7 +11,7 @@ export const doctoresService = {
         usuarios (nombre, apellido1, apellido2)
       `);
     if (error) throw error;
-    return data;
+    return data ?? []; // ✅ nunca retorna null
   },
 
   async delete(id: number) {

@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TextInput,
   TouchableOpacity,
   ScrollView,
@@ -14,8 +13,9 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
-import { supabase } from '../../../supabase/supabase'; // ajusta la ruta según tu proyecto
 
+import { SafeAreaView } from 'react-native-safe-area-context'; // ✅
+import { supabase } from '../../../supabase/supabase';
 // ──────────────────────────────────────────────
 // Tipos
 // ──────────────────────────────────────────────

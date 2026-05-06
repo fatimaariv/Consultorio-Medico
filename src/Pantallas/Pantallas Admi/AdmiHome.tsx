@@ -4,17 +4,17 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   ActivityIndicator,
   StatusBar,
   Platform,
 } from 'react-native';
+
+import { SafeAreaView } from 'react-native-safe-area-context'; // ✅
 import { supabase } from '../../supabase/supabase';
 import { AuthContext } from '../../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 type Stats = {
   doctores: number;

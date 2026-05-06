@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
@@ -11,21 +10,9 @@ import {
   StatusBar,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthContext } from '../../context/AuthContext';
 import { supabase } from '../../supabase/supabase';
-
-// ─── Tipos ──────────────────────────────────────────────────────────────────
-type DoctorProfile = {
-  nombreCompleto: string;
-  iniciales: string;
-  especialidad: string;
-  cedula: string;
-  correo: string;
-  telefono: string;
-  genero: string;
-  hora_inicio: string;
-  hora_fin: string;
-};
 
 // ─── Componente auxiliar InfoRow ────────────────────────────────────────────
 const InfoRow = ({ icon, label, value }: { icon: string; label: string; value: string }) => (
@@ -40,11 +27,12 @@ const InfoRow = ({ icon, label, value }: { icon: string; label: string; value: s
 
 // ─── Componente principal ───────────────────────────────────────────────────
 export default function PerfilDoc({ navigation }: any) {
-  const { session } = useContext(AuthContext);
-  const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<DoctorProfile | null>(null);
+  const { session, doctorProfile, setDoctorProfile } = useContext(AuthContext);
+  const [loading, setLoading] = useState(!doctorProfile); // si ya hay caché, no carga
 
   useEffect(() => {
+    // Si ya tenemos el perfil en caché, no hacemos ninguna petición
+    if (doctorProfile) return;
     fetchDoctorProfile();
   }, [session]);
 
@@ -53,39 +41,39 @@ export default function PerfilDoc({ navigation }: any) {
       setLoading(true);
       if (!session?.user?.email) return;
 
-      // 1. Buscar usuario por correo (datos personales viven en 'usuarios')
-      const { data: usuarioData, error: usuarioError } = await supabase
+      // ── Query única con JOIN (antes eran 2 queries secuenciales) ──
+      const { data, error } = await supabase
         .from('usuarios')
-        .select('id, nombre, apellido1, apellido2, correo, telefono, genero')
+        .select(`
+          id, nombre, apellido1, apellido2, correo, telefono, genero,
+          doctores ( especialidad, cedula, hora_inicio, hora_fin )
+        `)
         .eq('correo', session.user.email)
         .single();
 
-      if (usuarioError || !usuarioData) throw new Error('No se encontró el usuario.');
+      if (error || !data) throw new Error('No se encontró el perfil.');
 
-      // 2. Con el id, buscar los datos médicos en 'doctores' (doctores.id === usuarios.id)
-      const { data: docData, error: docError } = await supabase
-        .from('doctores')
-        .select('especialidad, cedula, hora_inicio, hora_fin')
-        .eq('id', usuarioData.id)
-        .single();
+      const docData = Array.isArray(data.doctores) ? data.doctores[0] : data.doctores;
+      if (!docData) throw new Error('No se encontró el perfil de doctor.');
 
-      if (docError || !docData) throw new Error('No se encontró el perfil de doctor.');
+      const nombre = data.nombre || '';
+      const apellido1 = data.apellido1 || '';
+      const apellido2 = data.apellido2 || '';
 
-      const nombre = usuarioData.nombre || '';
-      const apellido1 = usuarioData.apellido1 || '';
-      const apellido2 = usuarioData.apellido2 || '';
-
-      setProfile({
+      const perfil = {
         nombreCompleto: `${nombre} ${apellido1} ${apellido2}`.trim(),
         iniciales: `${nombre[0] || ''}${apellido1[0] || ''}`.toUpperCase(),
         especialidad: docData.especialidad,
         cedula: docData.cedula,
-        correo: usuarioData.correo,
-        telefono: usuarioData.telefono || 'No registrado',
-        genero: usuarioData.genero,
+        correo: data.correo,
+        telefono: data.telefono || 'No registrado',
+        genero: data.genero,
         hora_inicio: docData.hora_inicio,
         hora_fin: docData.hora_fin,
-      });
+      };
+
+      // Guardar en caché del contexto para visitas futuras
+      setDoctorProfile(perfil);
     } catch (error: any) {
       console.error('Error al obtener perfil:', error.message);
       Alert.alert('Error', `No se pudo cargar el perfil: ${error.message}`);
@@ -96,17 +84,8 @@ export default function PerfilDoc({ navigation }: any) {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    // El caché se limpia automáticamente en AuthContext al detectar SIGNED_OUT
   };
-
-  // ── Loading ──────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563eb" />
-        <Text style={styles.loadingText}>Cargando perfil profesional...</Text>
-      </View>
-    );
-  }
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
@@ -115,81 +94,92 @@ export default function PerfilDoc({ navigation }: any) {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* ── HEADER ── */}
+        {/* ── HEADER — siempre visible, placeholders mientras carga ── */}
         <View style={styles.header}>
           <View style={styles.headerBubble1} />
           <View style={styles.headerBubble2} />
 
           <Text style={styles.logoText}>Medi Track · Panel Médico</Text>
 
-          {/* Avatar con iniciales */}
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{profile?.iniciales || '?'}</Text>
+              <Text style={styles.avatarText}>{doctorProfile?.iniciales || '...'}</Text>
             </View>
-            <Text style={styles.headerName}>Dr. {profile?.nombreCompleto}</Text>
+            <Text style={styles.headerName}>
+              Dr. {doctorProfile?.nombreCompleto || 'Cargando...'}
+            </Text>
             <View style={styles.especialidadBadge}>
-              <Text style={styles.especialidadBadgeText}>🩺 {profile?.especialidad}</Text>
+              <Text style={styles.especialidadBadgeText}>
+                🩺 {doctorProfile?.especialidad || 'Cargando...'}
+              </Text>
             </View>
           </View>
         </View>
 
-        <View style={styles.body}>
-
-          {/* ── INFORMACIÓN PERSONAL ── */}
-          <Text style={styles.sectionTitle}>Información Personal</Text>
-          <View style={styles.card}>
-            <InfoRow icon="✉️" label="Correo electrónico" value={profile?.correo || ''} />
-            <View style={styles.rowDivider} />
-            <InfoRow
-              icon="📞"
-              label="Teléfono de contacto"
-              value={profile?.telefono || 'No registrado'}
-            />
-            <View style={styles.rowDivider} />
-            <InfoRow
-              icon={profile?.genero === 'masculino' ? '♂️' : '♀️'}
-              label="Género"
-              value={
-                profile?.genero === 'masculino'
-                  ? 'Masculino'
-                  : profile?.genero === 'femenino'
-                  ? 'Femenino'
-                  : profile?.genero || 'No especificado'
-              }
-            />
+        {/* ── CONTENIDO — spinner o cards según estado de carga ── */}
+        {loading ? (
+          <View style={styles.loadingContent}>
+            <ActivityIndicator size="large" color="#2563eb" />
+            <Text style={styles.loadingText}>Cargando perfil profesional...</Text>
           </View>
+        ) : (
+          <View style={styles.body}>
 
-          {/* ── DATOS PROFESIONALES ── */}
-          <Text style={styles.sectionTitle}>Datos Profesionales</Text>
-          <View style={styles.card}>
-            <InfoRow icon="🪪" label="Cédula profesional" value={profile?.cedula || 'En trámite'} />
-            <View style={styles.rowDivider} />
-            <View style={styles.infoRow}>
-              <Text style={styles.infoIcon}>🕐</Text>
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Horario de atención</Text>
-                <View style={styles.horarioBox}>
-                  <View style={styles.horarioItem}>
-                    <Text style={styles.horarioItemLabel}>Entrada</Text>
-                    <Text style={styles.horarioItemValue}>{profile?.hora_inicio}</Text>
-                  </View>
-                  <View style={styles.horarioSeparator} />
-                  <View style={styles.horarioItem}>
-                    <Text style={styles.horarioItemLabel}>Salida</Text>
-                    <Text style={styles.horarioItemValue}>{profile?.hora_fin}</Text>
+            {/* ── INFORMACIÓN PERSONAL ── */}
+            <Text style={styles.sectionTitle}>Información Personal</Text>
+            <View style={styles.card}>
+              <InfoRow icon="✉️" label="Correo electrónico" value={doctorProfile?.correo || ''} />
+              <View style={styles.rowDivider} />
+              <InfoRow
+                icon="📞"
+                label="Teléfono de contacto"
+                value={doctorProfile?.telefono || 'No registrado'}
+              />
+              <View style={styles.rowDivider} />
+              <InfoRow
+                icon={doctorProfile?.genero === 'masculino' ? '♂️' : '♀️'}
+                label="Género"
+                value={
+                  doctorProfile?.genero === 'masculino'
+                    ? 'Masculino'
+                    : doctorProfile?.genero === 'femenino'
+                    ? 'Femenino'
+                    : doctorProfile?.genero || 'No especificado'
+                }
+              />
+            </View>
+
+            {/* ── DATOS PROFESIONALES ── */}
+            <Text style={styles.sectionTitle}>Datos Profesionales</Text>
+            <View style={styles.card}>
+              <InfoRow icon="🪪" label="Cédula profesional" value={doctorProfile?.cedula || 'En trámite'} />
+              <View style={styles.rowDivider} />
+              <View style={styles.infoRow}>
+                <Text style={styles.infoIcon}>🕐</Text>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Horario de atención</Text>
+                  <View style={styles.horarioBox}>
+                    <View style={styles.horarioItem}>
+                      <Text style={styles.horarioItemLabel}>Entrada</Text>
+                      <Text style={styles.horarioItemValue}>{doctorProfile?.hora_inicio}</Text>
+                    </View>
+                    <View style={styles.horarioSeparator} />
+                    <View style={styles.horarioItem}>
+                      <Text style={styles.horarioItemLabel}>Salida</Text>
+                      <Text style={styles.horarioItemValue}>{doctorProfile?.hora_fin}</Text>
+                    </View>
                   </View>
                 </View>
               </View>
             </View>
+
+            {/* ── CERRAR SESIÓN ── */}
+            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
+              <Text style={styles.logoutText}>Cerrar Sesión</Text>
+            </TouchableOpacity>
+
           </View>
-
-          {/* ── CERRAR SESIÓN ── */}
-          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
-            <Text style={styles.logoutText}>Cerrar Sesión</Text>
-          </TouchableOpacity>
-
-        </View>
+        )}
 
         <View style={{ height: 30 }} />
       </ScrollView>
@@ -214,13 +204,16 @@ const BLUE_DARK = '#1a4fd6';
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f0f4ff' },
   scrollContent: { paddingBottom: 100 },
-  center: {
-    flex: 1, justifyContent: 'center', alignItems: 'center',
-    backgroundColor: '#f0f4ff',
+
+  loadingContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 60,
+    paddingBottom: 40,
   },
   loadingText: { marginTop: 12, color: '#64748b', fontSize: 14 },
 
-  // ── Header ──
   header: {
     backgroundColor: BLUE_DARK,
     paddingHorizontal: 22,
@@ -262,7 +255,6 @@ const styles = StyleSheet.create({
   },
   especialidadBadgeText: { color: 'rgba(255,255,255,0.9)', fontSize: 13, fontWeight: '600' },
 
-  // ── Body ──
   body: { paddingHorizontal: 22 },
   sectionTitle: {
     fontSize: 13, fontWeight: '700', color: '#64748b',
@@ -285,7 +277,6 @@ const styles = StyleSheet.create({
   infoValue: { fontSize: 15, color: '#1e293b', fontWeight: '500' },
   rowDivider: { height: 1, backgroundColor: '#f1f5f9', marginLeft: 32 },
 
-  // Horario box
   horarioBox: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#f8faff', borderRadius: 10,
@@ -297,7 +288,6 @@ const styles = StyleSheet.create({
   horarioItemValue: { fontSize: 16, fontWeight: '700', color: BLUE, marginTop: 2 },
   horarioSeparator: { width: 1, height: '80%', backgroundColor: '#dbe8ff' },
 
-  // Logout
   logoutBtn: {
     backgroundColor: '#fff1f0', borderRadius: 14,
     padding: 16, alignItems: 'center', marginBottom: 8,
@@ -305,7 +295,6 @@ const styles = StyleSheet.create({
   },
   logoutText: { color: '#ef4444', fontWeight: '700', fontSize: 15 },
 
-  // Navbar
   bottomNav: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
     backgroundColor: 'white', flexDirection: 'row',

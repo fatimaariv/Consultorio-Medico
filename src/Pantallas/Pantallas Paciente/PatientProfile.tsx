@@ -3,13 +3,13 @@ import {
   View, 
   Text, 
   StyleSheet, 
-  SafeAreaView,
   ScrollView,
   ActivityIndicator,
   Alert,
   TouchableOpacity,
   StatusBar,
 } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from "../../supabase/supabase";
 
 const PatientProfile = ({ navigation }: any) => {

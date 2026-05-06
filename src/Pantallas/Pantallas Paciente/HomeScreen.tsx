@@ -6,9 +6,9 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
-  SafeAreaView,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthContext } from '../../context/AuthContext';
 import { supabase } from '../../supabase/supabase';
 import { useFocusEffect } from '@react-navigation/native';

@@ -4,10 +4,10 @@ import {
   Text, 
   FlatList, 
   StyleSheet, 
-  SafeAreaView, 
   ActivityIndicator,
   StatusBar
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthContext } from '../../context/AuthContext';
 import { supabase } from '../../supabase/supabase';
 

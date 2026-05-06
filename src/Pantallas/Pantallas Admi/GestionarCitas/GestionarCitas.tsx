@@ -4,8 +4,7 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
-  StatusBar,
+  StatusBar,        // ✅ este se queda en react-native
   ScrollView,
   TouchableOpacity,
   TextInput,
@@ -14,6 +13,8 @@ import {
   Platform,
   Modal,
 } from 'react-native';
+
+import { SafeAreaView } from 'react-native-safe-area-context'; // ✅ movido aquí
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../supabase/supabase';
 

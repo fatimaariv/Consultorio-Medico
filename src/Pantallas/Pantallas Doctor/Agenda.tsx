@@ -6,11 +6,12 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
-  SafeAreaView,
   StatusBar,
   ActivityIndicator,
   FlatList,
 } from 'react-native';
+
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthContext } from '../../context/AuthContext';
 import { supabase } from '../../supabase/supabase';
 import { useFocusEffect } from '@react-navigation/native';
@@ -32,7 +33,6 @@ const MESES_CORTOS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct
 
 const toISO = (d: Date) => d.toISOString().split('T')[0];
 
-/** Genera los próximos N días a partir de hoy */
 const generateDays = (n: number): Date[] => {
   const days: Date[] = [];
   const today = new Date();
@@ -57,7 +57,6 @@ export default function Agenda({ navigation }: any) {
   const [citas, setCitas] = useState<Cita[]>([]);
   const [loadingCitas, setLoadingCitas] = useState(false);
 
-  // Días del carrusel
   const days = generateDays(DAYS_TO_SHOW);
   const today = toISO(new Date());
   const [selectedDate, setSelectedDate] = useState<string>(today);
@@ -143,7 +142,6 @@ export default function Agenda({ navigation }: any) {
     }, [session])
   );
 
-  // Cuando cambia el doctor o la fecha, recargar citas
   useFocusEffect(
     useCallback(() => {
       if (doctorId) fetchCitas(selectedDate, doctorId);
@@ -188,7 +186,7 @@ export default function Agenda({ navigation }: any) {
       case 'confirmada': return { bg: '#dcfce7', text: '#16a34a' };
       case 'pendiente':  return { bg: '#fef9c3', text: '#ca8a04' };
       case 'cancelada':  return { bg: '#fee2e2', text: '#dc2626' };
-      case 'terminada':   return { bg: '#d1fae5', text: '#059669' };
+      case 'terminada':  return { bg: '#d1fae5', text: '#059669' };
       default:           return { bg: '#f1f5f9', text: '#64748b' };
     }
   };
@@ -196,22 +194,13 @@ export default function Agenda({ navigation }: any) {
   const selectedDateObj = new Date(selectedDate + 'T12:00:00');
   const isToday = selectedDate === today;
 
-  // ── Loading ──────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
-        <Text style={styles.loadingText}>Cargando agenda...</Text>
-      </View>
-    );
-  }
-
   // ── Render ───────────────────────────────────────────────────────────────
+  // ✅ Ya no hay if(loading) temprano — el header y carrusel se muestran siempre
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1a4fd6" />
 
-      {/* ── HEADER ── */}
+      {/* ── HEADER — siempre visible ── */}
       <View style={styles.header}>
         <View style={styles.headerBubble1} />
         <View style={styles.headerBubble2} />
@@ -220,10 +209,14 @@ export default function Agenda({ navigation }: any) {
           <View>
             <Text style={styles.logoText}>Medi Track</Text>
             <Text style={styles.headerTitle}>Mi Agenda</Text>
-            <Text style={styles.headerSub}>Dr. {doctorName}</Text>
+            <Text style={styles.headerSub}>
+              {loading ? 'Cargando...' : `Dr. ${doctorName}`}
+            </Text>
           </View>
           <View style={styles.specialtyBadge}>
-            <Text style={styles.specialtyBadgeText}>🩺 {speciality}</Text>
+            <Text style={styles.specialtyBadgeText}>
+              🩺 {loading ? '...' : speciality}
+            </Text>
           </View>
         </View>
 
@@ -238,7 +231,9 @@ export default function Agenda({ navigation }: any) {
             </Text>
           </View>
           <View style={styles.daySummaryRight}>
-            <Text style={styles.daySummaryCitasNum}>{citas.length}</Text>
+            <Text style={styles.daySummaryCitasNum}>
+              {loading ? '-' : citas.length}
+            </Text>
             <Text style={styles.daySummaryCitasLabel}>
               {citas.length === 1 ? 'cita' : 'citas'}
             </Text>
@@ -246,7 +241,7 @@ export default function Agenda({ navigation }: any) {
         </View>
       </View>
 
-      {/* ── CARRUSEL DE DÍAS ── */}
+      {/* ── CARRUSEL DE DÍAS — siempre visible ── */}
       <View style={styles.calendarStrip}>
         <ScrollView
           horizontal
@@ -279,78 +274,81 @@ export default function Agenda({ navigation }: any) {
         </ScrollView>
       </View>
 
-      {/* ── LISTA DE CITAS ── */}
-      <ScrollView
-        style={styles.citasList}
-        contentContainerStyle={styles.citasListContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={styles.sectionTitle}>
-          {isToday ? 'Citas de hoy' : `Citas del ${selectedDateObj.getDate()} ${MESES_CORTOS[selectedDateObj.getMonth()]}`}
-        </Text>
+      {/* ── CONTENIDO — spinner solo aquí si loading ── */}
+      {loading ? (
+        <View style={styles.centerState}>
+          <ActivityIndicator size="large" color="#2563eb" />
+          <Text style={styles.loadingText}>Cargando agenda...</Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.citasList}
+          contentContainerStyle={styles.citasListContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.sectionTitle}>
+            {isToday ? 'Citas de hoy' : `Citas del ${selectedDateObj.getDate()} ${MESES_CORTOS[selectedDateObj.getMonth()]}`}
+          </Text>
 
-        {loadingCitas ? (
-          <View style={styles.centerState}>
-            <ActivityIndicator size="small" color="#2563eb" />
-            <Text style={styles.centerStateText}>Cargando citas...</Text>
-          </View>
-        ) : citas.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateIcon}>🗓️</Text>
-            <Text style={styles.emptyStateTitle}>Sin citas</Text>
-            <Text style={styles.emptyStateText}>
-              No tienes citas agendadas para este día.
-            </Text>
-          </View>
-        ) : (
-          citas.map((cita, index) => {
-            const estadoStyle = getEstadoStyle(cita.estado);
-            return (
-              <View key={cita.id} style={styles.citaCard}>
-                {/* Acento de color izquierdo */}
-                <View style={[styles.citaAccent, index === 0 && styles.citaAccentFirst]} />
+          {loadingCitas ? (
+            <View style={styles.centerState}>
+              <ActivityIndicator size="small" color="#2563eb" />
+              <Text style={styles.centerStateText}>Cargando citas...</Text>
+            </View>
+          ) : citas.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateIcon}>🗓️</Text>
+              <Text style={styles.emptyStateTitle}>Sin citas</Text>
+              <Text style={styles.emptyStateText}>
+                No tienes citas agendadas para este día.
+              </Text>
+            </View>
+          ) : (
+            citas.map((cita, index) => {
+              const estadoStyle = getEstadoStyle(cita.estado);
+              return (
+                <View key={cita.id} style={styles.citaCard}>
+                  <View style={[styles.citaAccent, index === 0 && styles.citaAccentFirst]} />
 
-                <View style={styles.citaBody}>
-                  {/* Fila superior: hora + badge estado */}
-                  <View style={styles.citaTopRow}>
-                    <View style={styles.citaHoraContainer}>
-                      <Text style={styles.citaHora}>{cita.hora}</Text>
-                      <Text style={styles.citaHoraLabel}> hrs</Text>
+                  <View style={styles.citaBody}>
+                    <View style={styles.citaTopRow}>
+                      <View style={styles.citaHoraContainer}>
+                        <Text style={styles.citaHora}>{cita.hora}</Text>
+                        <Text style={styles.citaHoraLabel}> hrs</Text>
+                      </View>
+                      <View style={[styles.estadoBadge, { backgroundColor: estadoStyle.bg }]}>
+                        <Text style={[styles.estadoText, { color: estadoStyle.text }]}>
+                          {cita.estado.charAt(0).toUpperCase() + cita.estado.slice(1)}
+                        </Text>
+                      </View>
                     </View>
-                    <View style={[styles.estadoBadge, { backgroundColor: estadoStyle.bg }]}>
-                      <Text style={[styles.estadoText, { color: estadoStyle.text }]}>
-                        {cita.estado.charAt(0).toUpperCase() + cita.estado.slice(1)}
-                      </Text>
+
+                    <Text style={styles.citaPaciente}>{cita.paciente}</Text>
+
+                    <View style={styles.citaMotivoRow}>
+                      <Text style={styles.citaMotivoIcon}>💬</Text>
+                      <Text style={styles.citaMotivo} numberOfLines={2}>{cita.motivo}</Text>
                     </View>
+
+                    {cita.estado !== 'terminada' && (
+                      <TouchableOpacity
+                        style={styles.cancelBtn}
+                        onPress={() => handleCancelarCita(cita)}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={styles.cancelBtnText}>✕  Cancelar cita</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
-
-                  {/* Nombre paciente */}
-                  <Text style={styles.citaPaciente}>{cita.paciente}</Text>
-
-                  {/* Motivo */}
-                  <View style={styles.citaMotivoRow}>
-                    <Text style={styles.citaMotivoIcon}>💬</Text>
-                    <Text style={styles.citaMotivo} numberOfLines={2}>{cita.motivo}</Text>
-                  </View>
-
-                  {/* Botón cancelar — solo si la cita no está terminada */}
-                  {cita.estado !== 'terminada' && (
-                    <TouchableOpacity
-                      style={styles.cancelBtn}
-                      onPress={() => handleCancelarCita(cita)}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={styles.cancelBtnText}>✕  Cancelar cita</Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
-              </View>
-            );
-          })
-        )}
+              );
+            })
+          )}
 
-        <View style={{ height: 32 }} />
-      </ScrollView>
+          <View style={{ height: 32 }} />
+        </ScrollView>
+      )}
+
     </SafeAreaView>
   );
 }
@@ -364,9 +362,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f0f4ff',
-  },
-  loadingContainer: {
-    flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f4ff',
   },
   loadingText: { marginTop: 12, color: '#6b7280', fontSize: 15 },
 
@@ -430,8 +425,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-
-  // Tarjeta resumen del día dentro del header
   daySummaryCard: {
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 16,
@@ -540,8 +533,6 @@ const styles = StyleSheet.create({
     color: '#1e293b',
     marginBottom: 14,
   },
-
-  // Estados vacío / cargando
   centerState: {
     alignItems: 'center',
     paddingVertical: 40,
@@ -642,8 +633,6 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 18,
   },
-
-  // Botón cancelar dentro de la tarjeta
   cancelBtn: {
     alignSelf: 'flex-start',
     backgroundColor: '#fef2f2',

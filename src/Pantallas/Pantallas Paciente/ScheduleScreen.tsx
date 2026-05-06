@@ -8,6 +8,8 @@ import { supabase } from '../../supabase/supabase';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Doctor = {
@@ -84,9 +86,11 @@ export default function ScheduleScreen({ navigation }: any) {
   };
 
   // ── Fetch doctores ────────────────────────────────────────────────────────
-  useEffect(() => {
+  useFocusEffect(
+  useCallback(() => {
     fetchDoctores();
-  }, []);
+  }, [])
+);
 
   const fetchDoctores = async () => {
     try {

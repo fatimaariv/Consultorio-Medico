@@ -1,5 +1,8 @@
-import React, { useEffect, useState, useContext } from 'react';
-import { View, Text, StyleSheet, FlatList, SafeAreaView, ActivityIndicator, StatusBar } from 'react-native';
+import { useState, useContext, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, StatusBar } from 'react-native';
+
+import { SafeAreaView } from 'react-native-safe-area-context'; // ✅
 import { AuthContext } from '../../context/AuthContext'; 
 import { supabase } from '../../supabase/supabase';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,20 +12,30 @@ export default function HistorialDeCitas() {
   const [loading, setLoading] = useState(true);
   const [historial, setHistorial] = useState<any[]>([]);
 
-  useEffect(() => {
+  useFocusEffect(
+  useCallback(() => {
     fetchHistorial();
-  }, []);
+  }, [session])
+);
 
   const fetchHistorial = async () => {
     try {
       // 1. Identificar al doctor por su correo de sesión
       if (!session?.user?.email) return;
       
-      const { data: doctorData } = await supabase
-        .from('doctores')
-        .select('id')
-        .eq('correo', session.user.email)
-        .single();
+      const { data: usuarioData } = await supabase
+  .from('usuarios')
+  .select('id')
+  .eq('correo', session.user.email)
+  .single();
+
+if (!usuarioData) return;
+
+const { data: doctorData } = await supabase
+  .from('doctores')
+  .select('id')
+  .eq('id', usuarioData.id)
+  .single();
 
       if (doctorData) {
         // 2. Consultar citas completadas con datos del paciente (tabla usuarios)
