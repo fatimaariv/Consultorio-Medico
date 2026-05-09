@@ -140,7 +140,7 @@ export default function LoginScreen({ navigation }: any) {
         >
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.appName}>MediTrak</Text>
+            <Text style={styles.appName}>MediTrack</Text>
             <Text style={styles.subtitle}>Bienvenido de vuelta</Text>
           </View>
 

@@ -1,33 +1,44 @@
 {
   "expo": {
-    "name": "Aplicacion",
+    "name": "MediTrak",
     "slug": "aplicacion",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
+    "scheme": "MediTrack",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1a4fd6"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.riveraaa.rr.aplicacion"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.riveraaa.rr.aplicacion"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "@react-native-community/datetimepicker"
-    ]
+    ],
+    "extra": {
+  "supabaseUrl": "https://hfivgvsfksutkbahjxew.supabase.co",
+  "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhmaXZndnNma3N1dGtiYWhqeGV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5MjMzMDcsImV4cCI6MjA4NjQ5OTMwN30.SDaPxeY7vZzKy03weCMjtXVY78OoxStcK39b0tQQtAU",
+  "eas": {
+    "projectId": "cea0a78b-fd1f-4b69-abd4-b3a4da3bc342"
+  }
+},
+    "owner": "riveraaa.rr"
   }
 }

@@ -71,6 +71,7 @@ export default function VerifyCodeScreen({ route, navigation }: any) {
       <View style={styles.inputGroup}>
         <TextInput 
           placeholder="Código de 6 dígitos" 
+          placeholderTextColor="#999"
           style={styles.input} 
           onChangeText={setCode}
           keyboardType="number-pad"
@@ -80,6 +81,7 @@ export default function VerifyCodeScreen({ route, navigation }: any) {
         <View style={styles.passwordContainer}>
           <TextInput 
             placeholder="Nueva contraseña" 
+            placeholderTextColor="#999"
             style={[styles.input, { flex: 1, marginBottom: 0, borderWidth: 0 }]}
             onChangeText={setNewPassword}
             secureTextEntry={!showPassword}
@@ -114,7 +116,8 @@ const styles = StyleSheet.create({
     marginBottom: 15, 
     borderWidth: 1, 
     borderColor: '#E1E1E1',
-    fontSize: 16
+    fontSize: 16,
+    color: '#333',
   },
   passwordContainer: {
     flexDirection: 'row',
@@ -124,6 +127,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E1E1E1',
     marginBottom: 15,
+    color: '#333',
   },
   eyeButton: {
     paddingHorizontal: 15,

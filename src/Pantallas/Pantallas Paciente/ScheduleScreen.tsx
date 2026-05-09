@@ -45,6 +45,26 @@ const generateSlots = (hora_inicio: string, hora_fin: string): string[] => {
   return slots;
 };
 
+/**
+ * Devuelve true si el slot "HH:MM" ya pasó hoy.
+ * Solo relevante cuando la fecha seleccionada es el día actual.
+ */
+const isPastSlot = (slot: string, fechaSeleccionada: string): boolean => {
+  const hoy = new Date();
+  const yyyy = hoy.getFullYear();
+  const mm   = String(hoy.getMonth() + 1).padStart(2, '0');
+  const dd   = String(hoy.getDate()).padStart(2, '0');
+  const fechaHoy = `${yyyy}-${mm}-${dd}`;
+
+  if (fechaSeleccionada !== fechaHoy) return false; // fecha futura → nunca pasado
+
+  const [slotH, slotM] = slot.split(':').map(Number);
+  const slotEnMinutos  = slotH * 60 + slotM;
+  const ahoraEnMinutos = hoy.getHours() * 60 + hoy.getMinutes();
+
+  return slotEnMinutos <= ahoraEnMinutos; // slot igual o anterior a la hora actual
+};
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function ScheduleScreen({ navigation }: any) {
   const { session } = useContext(AuthContext);
@@ -236,6 +256,14 @@ export default function ScheduleScreen({ navigation }: any) {
   const handleCreateAppointment = async () => {
     if (!formData.id_doctor || !formData.fecha || !formData.hora || !formData.motivo) {
       Alert.alert('Campos incompletos', 'Por favor completa todos los campos.');
+      return;
+    }
+
+    if (!consultorioAsignado) {
+      Alert.alert(
+        'Sin consultorio disponible',
+        'No hay consultorios disponibles para ese horario. Por favor elige otra hora o intenta más tarde.',
+      );
       return;
     }
 
@@ -450,36 +478,39 @@ export default function ScheduleScreen({ navigation }: any) {
                 <View style={styles.slotsGrid}>
                   {allSlots.map((slot) => {
                     const occupied = occupiedSlots.includes(slot);
+                    const past     = isPastSlot(slot, formData.fecha);
+                    const blocked  = occupied || past;
                     const selected = formData.hora === slot;
                     return (
                       <TouchableOpacity
                         key={slot}
                         style={[
                           styles.slotBtn,
-                          selected && styles.slotBtnSelected,
-                          occupied && styles.slotBtnOccupied,
+                          selected  && styles.slotBtnSelected,
+                          blocked   && styles.slotBtnOccupied,
                         ]}
                         onPress={async () => {
-                          if (!occupied) {
+                          if (!blocked) {
                             setFormData(prev => ({ ...prev, hora: slot }));
                             setConsultorioAsignado(null);
                             const c = await asignarConsultorio(formData.fecha, slot);
                             setConsultorioAsignado(c);
                           }
                         }}
-                        activeOpacity={occupied ? 1 : 0.75}
-                        disabled={occupied}
+                        activeOpacity={blocked ? 1 : 0.75}
+                        disabled={blocked}
                       >
                         <Text
                           style={[
                             styles.slotText,
                             selected && styles.slotTextSelected,
-                            occupied && styles.slotTextOccupied,
+                            blocked  && styles.slotTextOccupied,
                           ]}
                         >
                           {slot}
                         </Text>
                         {occupied && <Text style={styles.slotOccupiedLabel}>Ocupado</Text>}
+                        {past && !occupied && <Text style={styles.slotOccupiedLabel}>Pasado</Text>}
                       </TouchableOpacity>
                     );
                   })}

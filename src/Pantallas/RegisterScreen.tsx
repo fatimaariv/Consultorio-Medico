@@ -328,7 +328,7 @@ export default function RegisterScreen({ navigation }: any) {
                 <Text style={styles.fieldLabel}>Contraseña <Text style={styles.required}>*</Text></Text>
                 <View style={[styles.passwordContainer, focusedField === 'password' && styles.inputFocused]}>
                   <TextInput
-                    placeholder="Mínimo 8 caracteres"
+                    placeholder="Mínimo 6 caracteres"
                     placeholderTextColor="#B0BAC9"
                     style={styles.inputPassword}
                     value={formData.password}

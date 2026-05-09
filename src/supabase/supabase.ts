@@ -1,10 +1,10 @@
-// src/supabase/supabase.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
-import { Database } from './database.types'; // El archivo de tipos que generes
+import Constants from 'expo-constants';
+import { Database } from './database.types';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl ?? '';
+const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey ?? '';
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
